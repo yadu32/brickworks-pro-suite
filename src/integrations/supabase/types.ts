@@ -14,7 +14,284 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      brick_types: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          standard_bricks_per_punch: number
+          type_name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          standard_bricks_per_punch: number
+          type_name: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          standard_bricks_per_punch?: number
+          type_name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bricks_production: {
+        Row: {
+          actual_bricks_produced: number
+          brick_type_id: string
+          created_at: string
+          date: string
+          id: string
+          number_of_punches: number
+          remarks: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_bricks_produced: number
+          brick_type_id: string
+          created_at?: string
+          date: string
+          id?: string
+          number_of_punches: number
+          remarks?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_bricks_produced?: number
+          brick_type_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          number_of_punches?: number
+          remarks?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bricks_production_brick_type_id_fkey"
+            columns: ["brick_type_id"]
+            isOneToOne: false
+            referencedRelation: "brick_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          employee_name: string
+          id: string
+          notes: string | null
+          payment_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date: string
+          employee_name: string
+          id?: string
+          notes?: string | null
+          payment_type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          employee_name?: string
+          id?: string
+          notes?: string | null
+          payment_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      material_purchases: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          material_id: string
+          notes: string | null
+          payment_made: number
+          quantity_purchased: number
+          supplier_name: string
+          supplier_phone: string | null
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          material_id: string
+          notes?: string | null
+          payment_made?: number
+          quantity_purchased: number
+          supplier_name: string
+          supplier_phone?: string | null
+          unit_cost: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          material_id?: string
+          notes?: string | null
+          payment_made?: number
+          quantity_purchased?: number
+          supplier_name?: string
+          supplier_phone?: string | null
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_purchases_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_usage: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          material_id: string
+          purpose: string
+          quantity_used: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          material_id: string
+          purpose: string
+          quantity_used: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          material_id?: string
+          purpose?: string
+          quantity_used?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materials: {
+        Row: {
+          average_cost_per_unit: number
+          created_at: string
+          current_stock_qty: number
+          id: string
+          material_name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          average_cost_per_unit?: number
+          created_at?: string
+          current_stock_qty?: number
+          id?: string
+          material_name: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          average_cost_per_unit?: number
+          created_at?: string
+          current_stock_qty?: number
+          id?: string
+          material_name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          amount_received: number
+          balance_due: number
+          brick_type_id: string
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          date: string
+          id: string
+          notes: string | null
+          quantity_sold: number
+          rate_per_brick: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount_received?: number
+          balance_due?: number
+          brick_type_id: string
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          date: string
+          id?: string
+          notes?: string | null
+          quantity_sold: number
+          rate_per_brick: number
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          amount_received?: number
+          balance_due?: number
+          brick_type_id?: string
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          quantity_sold?: number
+          rate_per_brick?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_brick_type_id_fkey"
+            columns: ["brick_type_id"]
+            isOneToOne: false
+            referencedRelation: "brick_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
