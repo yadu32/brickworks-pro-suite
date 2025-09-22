@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -141,7 +141,7 @@ const SalesModule = () => {
         )
       `)
       .eq('customer_name', customerName)
-      .order('date', { ascending: false });
+      .order('date', { ascending: true }); // Changed to ascending to show chronological order
     
     if (error) {
       toast({ title: 'Error loading customer sales', description: error.message, variant: 'destructive' });
@@ -150,27 +150,79 @@ const SalesModule = () => {
     }
   };
 
+  const applyFIFOPayments = async (customerName: string, paymentAmount: number, newSaleId?: string) => {
+    // Get all unpaid sales for this customer, ordered by date (oldest first)
+    const { data: unpaidSales, error } = await supabase
+      .from('sales')
+      .select('*')
+      .eq('customer_name', customerName)
+      .gt('balance_due', 0)
+      .order('date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching unpaid sales:', error);
+      return;
+    }
+
+    let remainingPayment = paymentAmount;
+    const updatedSales: any[] = [];
+
+    // Apply payment to oldest unpaid sales first
+    for (const sale of unpaidSales || []) {
+      if (remainingPayment <= 0) break;
+      
+      // Skip the new sale we just created to avoid double-applying payment
+      if (sale.id === newSaleId) continue;
+
+      const amountToApply = Math.min(remainingPayment, sale.balance_due);
+      const newAmountReceived = sale.amount_received + amountToApply;
+      const newBalanceDue = sale.balance_due - amountToApply;
+
+      updatedSales.push({
+        id: sale.id,
+        amount_received: newAmountReceived,
+        balance_due: newBalanceDue
+      });
+
+      remainingPayment -= amountToApply;
+    }
+
+    // Update all affected sales
+    for (const updatedSale of updatedSales) {
+      await supabase
+        .from('sales')
+        .update({
+          amount_received: updatedSale.amount_received,
+          balance_due: updatedSale.balance_due
+        })
+        .eq('id', updatedSale.id);
+    }
+
+    return remainingPayment;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const totalAmount = Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick);
     const amountReceived = Number(saleForm.amount_received);
-    const balanceDue = totalAmount - amountReceived;
     
-    const saleData = {
-      date: saleForm.date,
-      customer_name: saleForm.customer_name,
-      customer_phone: saleForm.customer_phone,
-      brick_type_id: saleForm.brick_type_id,
-      quantity_sold: Number(saleForm.quantity_sold),
-      rate_per_brick: Number(saleForm.rate_per_brick),
-      total_amount: totalAmount,
-      amount_received: amountReceived,
-      balance_due: balanceDue,
-      notes: saleForm.notes
-    };
-
     if (editingSale) {
+      // For editing, just update the record without FIFO logic
+      const balanceDue = totalAmount - amountReceived;
+      const saleData = {
+        date: saleForm.date,
+        customer_name: saleForm.customer_name,
+        customer_phone: saleForm.customer_phone,
+        brick_type_id: saleForm.brick_type_id,
+        quantity_sold: Number(saleForm.quantity_sold),
+        rate_per_brick: Number(saleForm.rate_per_brick),
+        total_amount: totalAmount,
+        amount_received: amountReceived,
+        balance_due: balanceDue,
+        notes: saleForm.notes
+      };
+
       const { error } = await supabase
         .from('sales')
         .update(saleData)
@@ -181,13 +233,48 @@ const SalesModule = () => {
         return;
       }
     } else {
-      const { error } = await supabase
-        .from('sales')
-        .insert([saleData]);
+      // For new sales, implement FIFO payment logic
       
-      if (error) {
-        toast({ title: 'Error adding sale', description: error.message, variant: 'destructive' });
+      // First, create the sale with full balance due (we'll adjust after FIFO)
+      const initialSaleData = {
+        date: saleForm.date,
+        customer_name: saleForm.customer_name,
+        customer_phone: saleForm.customer_phone,
+        brick_type_id: saleForm.brick_type_id,
+        quantity_sold: Number(saleForm.quantity_sold),
+        rate_per_brick: Number(saleForm.rate_per_brick),
+        total_amount: totalAmount,
+        amount_received: 0, // Start with 0, will be updated by FIFO
+        balance_due: totalAmount, // Start with full amount
+        notes: saleForm.notes
+      };
+
+      const { data: newSale, error: insertError } = await supabase
+        .from('sales')
+        .insert([initialSaleData])
+        .select()
+        .single();
+      
+      if (insertError) {
+        toast({ title: 'Error adding sale', description: insertError.message, variant: 'destructive' });
         return;
+      }
+
+      // Apply FIFO payment logic if there's a payment
+      if (amountReceived > 0) {
+        const remainingPayment = await applyFIFOPayments(saleForm.customer_name, amountReceived, newSale.id);
+        
+        // Apply any remaining payment to the new sale
+        if (remainingPayment > 0) {
+          const newSalePayment = Math.min(remainingPayment, totalAmount);
+          await supabase
+            .from('sales')
+            .update({
+              amount_received: newSalePayment,
+              balance_due: totalAmount - newSalePayment
+            })
+            .eq('id', newSale.id);
+        }
       }
     }
 
@@ -305,58 +392,122 @@ const SalesModule = () => {
           )}
 
           <section className="animate-slide-up">
-            <h2 className="text-2xl font-semibold text-foreground mb-4">Transaction History</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Customer Ledger</h2>
             <div className="card-dark">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 text-secondary">Date</th>
-                      <th className="text-left py-3 px-4 text-secondary">Brick Type</th>
-                      <th className="text-left py-3 px-4 text-secondary">Quantity</th>
-                      <th className="text-left py-3 px-4 text-secondary">Rate</th>
-                      <th className="text-left py-3 px-4 text-secondary">Total</th>
-                      <th className="text-left py-3 px-4 text-secondary">Received</th>
-                      <th className="text-left py-3 px-4 text-secondary">Balance</th>
+                      <th className="text-left py-3 px-4 text-secondary">Transaction</th>
+                      <th className="text-left py-3 px-4 text-secondary">Sale Amount</th>
+                      <th className="text-left py-3 px-4 text-secondary">Payment</th>
+                      <th className="text-left py-3 px-4 text-secondary">Running Balance</th>
                       <th className="text-left py-3 px-4 text-secondary">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {customerSales.map((sale) => {
-                      const paymentStatus = getPaymentStatus(sale);
-                      return (
-                        <tr key={sale.id} className="border-b border-border hover:bg-accent/5">
-                          <td className="py-3 px-4 text-foreground">
-                            {new Date(sale.date).toLocaleDateString('en-IN')}
-                          </td>
-                          <td className="py-3 px-4 text-foreground">
-                            {sale.brick_types.type_name}
-                          </td>
-                          <td className="py-3 px-4 text-foreground">
-                            {sale.quantity_sold.toLocaleString()}
-                          </td>
-                          <td className="py-3 px-4 text-foreground">
-                            {formatCurrency(sale.rate_per_brick)}
-                          </td>
-                          <td className="py-3 px-4 text-foreground">
-                            {formatCurrency(sale.total_amount)}
-                          </td>
-                          <td className="py-3 px-4 text-foreground">
-                            {formatCurrency(sale.amount_received)}
-                          </td>
-                          <td className="py-3 px-4 text-foreground">
-                            {formatCurrency(sale.balance_due)}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`text-sm px-2 py-1 rounded bg-${paymentStatus.color}/20 text-${paymentStatus.color}`}>
-                              {paymentStatus.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {(() => {
+                      let runningBalance = 0;
+                      return customerSales.map((sale, index) => {
+                        // Add sale amount to running balance
+                        runningBalance += sale.total_amount;
+                        const saleBalance = runningBalance;
+                        
+                        // Subtract payment from running balance
+                        runningBalance -= sale.amount_received;
+                        
+                        const paymentStatus = getPaymentStatus(sale);
+                        
+                        return (
+                          <React.Fragment key={sale.id}>
+                            {/* Sale Transaction Row */}
+                            <tr className="border-b border-border hover:bg-accent/5">
+                              <td className="py-3 px-4 text-foreground">
+                                {new Date(sale.date).toLocaleDateString('en-IN')}
+                              </td>
+                              <td className="py-3 px-4 text-foreground">
+                                <div>
+                                  <p className="font-medium">Sale: {sale.brick_types.type_name}</p>
+                                  <p className="text-sm text-secondary">
+                                    {sale.quantity_sold.toLocaleString()} @ {formatCurrency(sale.rate_per_brick)}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-destructive font-medium">
+                                +{formatCurrency(sale.total_amount)}
+                              </td>
+                              <td className="py-3 px-4 text-secondary">
+                                -
+                              </td>
+                              <td className="py-3 px-4 text-foreground font-medium">
+                                {formatCurrency(saleBalance)}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-sm px-2 py-1 rounded bg-destructive/20 text-destructive">
+                                  Due
+                                </span>
+                              </td>
+                            </tr>
+                            
+                            {/* Payment Transaction Row (if payment was made) */}
+                            {sale.amount_received > 0 && (
+                              <tr className="border-b border-border hover:bg-accent/5">
+                                <td className="py-3 px-4 text-foreground">
+                                  {new Date(sale.date).toLocaleDateString('en-IN')}
+                                </td>
+                                <td className="py-3 px-4 text-foreground">
+                                  <p className="font-medium">Payment Received</p>
+                                  {sale.notes && (
+                                    <p className="text-sm text-secondary">{sale.notes}</p>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-secondary">
+                                  -
+                                </td>
+                                <td className="py-3 px-4 text-success font-medium">
+                                  -{formatCurrency(sale.amount_received)}
+                                </td>
+                                <td className="py-3 px-4 text-foreground font-medium">
+                                  {formatCurrency(runningBalance)}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`text-sm px-2 py-1 rounded bg-${paymentStatus.color}/20 text-${paymentStatus.color}`}>
+                                    {paymentStatus.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
+              </div>
+              
+              {/* Summary Footer */}
+              <div className="mt-6 p-4 bg-accent/10 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-secondary text-sm">Total Sales</p>
+                    <p className="text-xl font-bold text-foreground">
+                      {formatCurrency(customerSales.reduce((sum, sale) => sum + sale.total_amount, 0))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-secondary text-sm">Total Payments</p>
+                    <p className="text-xl font-bold text-success">
+                      {formatCurrency(customerSales.reduce((sum, sale) => sum + sale.amount_received, 0))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-secondary text-sm">Outstanding Balance</p>
+                    <p className="text-xl font-bold text-warning">
+                      {formatCurrency(customerSales.reduce((sum, sale) => sum + sale.balance_due, 0))}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
