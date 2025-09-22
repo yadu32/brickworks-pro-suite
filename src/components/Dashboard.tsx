@@ -1,7 +1,27 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Package, Users, IndianRupee, AlertTriangle, Factory, ShoppingCart, CreditCard } from 'lucide-react';
+import { TrendingUp, Package, Users, IndianRupee, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import heroFactory from '@/assets/hero-factory.jpg';
+
+interface QuickActionButtonProps {
+  icon: LucideIcon;
+  label: string;
+  action: string;
+}
+
+const QuickActionButton = ({ icon: Icon, label, action }: QuickActionButtonProps) => {
+  const handleClick = () => {
+    // Dispatch custom event to change tab
+    window.dispatchEvent(new CustomEvent('changeTab', { detail: action }));
+  };
+
+  return (
+    <button onClick={handleClick} className="card-dark p-4 text-center hover-scale">
+      <Icon className="h-8 w-8 text-primary mx-auto mb-2" />
+      <p className="text-sm font-medium text-foreground">{label}</p>
+    </button>
+  );
+};
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -299,25 +319,10 @@ const Dashboard = () => {
         <section className="animate-scale-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button className="card-dark p-4 text-center hover-scale">
-              <Factory className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Add Production</p>
-            </button>
-            
-            <button className="card-dark p-4 text-center hover-scale">
-              <ShoppingCart className="h-8 w-8 text-success mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Record Sale</p>
-            </button>
-            
-            <button className="card-dark p-4 text-center hover-scale">
-              <Package className="h-8 w-8 text-warning mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Material Purchase</p>
-            </button>
-            
-            <button className="card-dark p-4 text-center hover-scale">
-              <CreditCard className="h-8 w-8 text-destructive mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Employee Payment</p>
-            </button>
+            <QuickActionButton icon={Factory} label="Add Production" action="production" />
+            <QuickActionButton icon={ShoppingCart} label="Record Sale" action="sales" />
+            <QuickActionButton icon={Package} label="Material Purchase" action="materials" />
+            <QuickActionButton icon={CreditCard} label="Employee Payment" action="payments" />
           </div>
         </section>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import Dashboard from '@/components/Dashboard';
 import ProductionModule from '@/components/ProductionModule';
@@ -9,6 +9,15 @@ import ReportsModule from '@/components/ReportsModule';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  useEffect(() => {
+    const handleTabChange = (event: CustomEvent) => {
+      setActiveTab(event.detail);
+    };
+
+    window.addEventListener('changeTab', handleTabChange as EventListener);
+    return () => window.removeEventListener('changeTab', handleTabChange as EventListener);
+  }, []);
 
       {activeTab === 'dashboard' && <Dashboard />}
       {activeTab === 'production' && <ProductionModule />}
