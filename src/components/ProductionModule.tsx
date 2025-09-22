@@ -175,14 +175,8 @@ const ProductionModule = () => {
     calculateExpected(parseInt(formData.number_of_punches), formData.brick_type_id) : 0;
 
   // Calculate totals
-  const todayRecords = productionRecords.filter(r => r.date === new Date().toISOString().split('T')[0]);
-  const fourInchType = brickTypes.find(bt => bt.type_name.includes('4-inch'));
-  const sixInchType = brickTypes.find(bt => bt.type_name.includes('6-inch'));
-  
-  const todayTotals = {
-    '4-inch': todayRecords.filter(r => r.brick_type_id === fourInchType?.id).reduce((sum, r) => sum + r.actual_bricks_produced, 0),
-    '6-inch': todayRecords.filter(r => r.brick_type_id === sixInchType?.id).reduce((sum, r) => sum + r.actual_bricks_produced, 0)
-  };
+  const fourInchType = brickTypes.find(bt => bt.type_name.toLowerCase().includes('4-inch') || bt.type_name.toLowerCase().includes('4 inch'));
+  const sixInchType = brickTypes.find(bt => bt.type_name.toLowerCase().includes('6-inch') || bt.type_name.toLowerCase().includes('6 inch'));
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -293,13 +287,13 @@ const ProductionModule = () => {
           </Dialog>
         </div>
 
-        {/* Today's Summary */}
+        {/* All-Time Summary */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="card-metric">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-secondary">Today's 4-inch Production</p>
-                <p className="text-metric text-primary">{todayTotals['4-inch'].toLocaleString()}</p>
+                <p className="text-secondary">Total 4-inch Production</p>
+                <p className="text-metric text-primary">{productionRecords.filter(r => r.brick_type_id === fourInchType?.id).reduce((sum, r) => sum + r.actual_bricks_produced, 0).toLocaleString()}</p>
                 <p className="text-secondary">pieces</p>
               </div>
               <Factory className="h-12 w-12 text-primary" />
@@ -309,8 +303,8 @@ const ProductionModule = () => {
           <div className="card-metric">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-secondary">Today's 6-inch Production</p>
-                <p className="text-metric text-success">{todayTotals['6-inch'].toLocaleString()}</p>
+                <p className="text-secondary">Total 6-inch Production</p>
+                <p className="text-metric text-success">{productionRecords.filter(r => r.brick_type_id === sixInchType?.id).reduce((sum, r) => sum + r.actual_bricks_produced, 0).toLocaleString()}</p>
                 <p className="text-secondary">pieces</p>
               </div>
               <Factory className="h-12 w-12 text-success" />

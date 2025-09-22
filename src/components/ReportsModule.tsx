@@ -71,8 +71,8 @@ const ReportsModule = () => {
         .from('brick_types')
         .select('*');
 
-      const fourInchType = brickTypes?.find(bt => bt.type_name.includes('4-inch'));
-      const sixInchType = brickTypes?.find(bt => bt.type_name.includes('6-inch'));
+      const fourInchType = brickTypes?.find(bt => bt.type_name.toLowerCase().includes('4-inch') || bt.type_name.toLowerCase().includes('4 inch'));
+      const sixInchType = brickTypes?.find(bt => bt.type_name.toLowerCase().includes('6-inch') || bt.type_name.toLowerCase().includes('6 inch'));
 
       // Production data
       const { data: productionData } = await supabase
@@ -120,8 +120,8 @@ const ReportsModule = () => {
         .lte('date', dateRange.endDate);
 
       const getMaterialData = (materialName: string) => {
-        const purchases = purchasesData?.filter(p => p.materials.material_name === materialName) || [];
-        const usage = usageData?.filter(u => u.materials.material_name === materialName) || [];
+        const purchases = purchasesData?.filter(p => p.materials?.material_name?.toLowerCase().includes(materialName.toLowerCase())) || [];
+        const usage = usageData?.filter(u => u.materials?.material_name?.toLowerCase().includes(materialName.toLowerCase())) || [];
         
         return {
           purchased: purchases.reduce((sum, p) => sum + Number(p.quantity_purchased), 0),

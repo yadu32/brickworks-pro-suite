@@ -140,7 +140,7 @@ const SalesModule = () => {
           unit
         )
       `)
-      .ilike('customer_name', customerName)
+      .eq('customer_name', customerName)
       .order('date', { ascending: false });
     
     if (error) {
