@@ -140,8 +140,8 @@ const SalesModule = () => {
           unit
         )
       `)
-      .eq('customer_name', customerName)
-      .order('date', { ascending: true }); // Changed to ascending to show chronological order
+      .ilike('customer_name', customerName)
+      .order('date', { ascending: true });
     
     if (error) {
       toast({ title: 'Error loading customer sales', description: error.message, variant: 'destructive' });
@@ -155,13 +155,13 @@ const SalesModule = () => {
     const { data: unpaidSales, error } = await supabase
       .from('sales')
       .select('*')
-      .eq('customer_name', customerName)
+      .ilike('customer_name', customerName)
       .gt('balance_due', 0)
       .order('date', { ascending: true });
 
     if (error) {
       console.error('Error fetching unpaid sales:', error);
-      return;
+      return paymentAmount;
     }
 
     let remainingPayment = paymentAmount;
