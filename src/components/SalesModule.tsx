@@ -107,7 +107,7 @@ const SalesModule = () => {
     const customerMap = new Map<string, CustomerSummary>();
     
     salesData.forEach(sale => {
-      const key = sale.customer_name.toLowerCase();
+      const key = sale.customer_name; // Use exact name as key
       if (!customerMap.has(key)) {
         customerMap.set(key, {
           customer_name: sale.customer_name,
@@ -140,7 +140,7 @@ const SalesModule = () => {
           unit
         )
       `)
-      .ilike('customer_name', customerName)
+      .eq('customer_name', customerName)
       .order('date', { ascending: true });
     
     if (error) {
@@ -155,7 +155,7 @@ const SalesModule = () => {
     const { data: unpaidSales, error } = await supabase
       .from('sales')
       .select('*')
-      .ilike('customer_name', customerName)
+      .eq('customer_name', customerName)
       .gt('balance_due', 0)
       .order('date', { ascending: true });
 
