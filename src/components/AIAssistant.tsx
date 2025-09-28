@@ -107,7 +107,7 @@ const AIAssistant = () => {
     setIsTyping(true);
     
     try {
-      const response = await fetch('http://localhost:5678/webhook/brickworks-ai-agent', {
+      const response = await fetch('http://localhost:5678/webhook-test/brickworks-ai-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
