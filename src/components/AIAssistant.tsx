@@ -1,15 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, BarChart3, DollarSign, Package, HelpCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { Send, Trash2 } from 'lucide-react';
 
 interface ChatMessage {
-  id: string;
   content: string;
   role: 'user' | 'assistant';
-  timestamp: Date;
-  status?: 'sent' | 'delivered' | 'error';
+  timestamp: string;
+  isError?: boolean;
 }
 
 interface AIResponse {
@@ -19,17 +15,18 @@ interface AIResponse {
   data?: any;
 }
 
+type Environment = 'test' | 'prod';
+
+const STORAGE_KEY = 'ai_chat_messages';
+const MAX_MESSAGES = 25;
+
 const AIAssistant = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      content: 'Hello! I\'m your BrickWorks AI Assistant. I can help you add sales, check production data, manage inventory, and answer questions about your factory. Try asking me something!',
-      role: 'assistant',
-      timestamp: new Date(),
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [env, setEnv] = useState<Environment>('test');
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const stored = sessionStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [sessionId] = useState(() => {
     const existing = sessionStorage.getItem('ai_session_id');
@@ -40,8 +37,32 @@ const AIAssistant = () => {
   });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const getEndpoint = () => {
+    return env === 'test'
+      ? 'http://localhost:5678/webhook-test/brickworks-agent'
+      : 'http://localhost:5678/webhook/brickworks-agent';
+  };
+
+  const addMessage = (content: string, role: 'user' | 'assistant', isError = false) => {
+    const newMessage: ChatMessage = {
+      content,
+      role,
+      timestamp: new Date().toISOString(),
+      isError,
+    };
+    setMessages(prev => {
+      const updated = [...prev, newMessage].slice(-MAX_MESSAGES);
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    sessionStorage.removeItem(STORAGE_KEY);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -51,272 +72,231 @@ const AIAssistant = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const addChatMessage = (content: string, role: 'user' | 'assistant', status: 'sent' | 'delivered' | 'error' = 'delivered') => {
-    const newMessage: ChatMessage = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      content,
-      role,
-      timestamp: new Date(),
-      status,
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
-
-  const showSuccessToast = (message: string) => {
-    toast({
-      title: "Success",
-      description: message,
-      className: "bg-green-600 text-white border-green-600",
-    });
-  };
-
-  const showErrorToast = (message: string) => {
-    toast({
-      title: "Error",
-      description: message,
-      variant: "destructive",
-    });
-  };
-
-  const handleAIResponse = (result: AIResponse) => {
-    if (result.success) {
-      addChatMessage(result.message, 'assistant');
-      
-      // Handle specific actions
-      if (result.action === 'sale_added') {
-        showSuccessToast('Sale recorded successfully!');
-        // Trigger refresh of sales data if needed
-        window.dispatchEvent(new CustomEvent('refreshSalesData'));
-      } else if (result.action === 'production_added') {
-        showSuccessToast('Production entry added!');
-        // Trigger refresh of production data if needed
-        window.dispatchEvent(new CustomEvent('refreshProductionData'));
-      } else if (result.action === 'material_usage_added') {
-        showSuccessToast('Material usage recorded!');
-        // Trigger refresh of materials data if needed
-        window.dispatchEvent(new CustomEvent('refreshMaterialsData'));
-      }
-    } else {
-      addChatMessage(result.message || 'An error occurred', 'assistant', 'error');
-      showErrorToast(result.message || 'Failed to process your request');
-    }
-  };
-
-  const sendMessageToAI = async (message: string) => {
-    setIsLoading(true);
+  const sendMessage = async (messageText: string) => {
     setIsTyping(true);
     
     try {
-      const response = await fetch('http://localhost:5678/webhook-test/brickworks-ai-agent', {
+      const response = await fetch(getEndpoint(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          message: message,
+          message: messageText,
           userId: 'brickworks_user',
-          sessionId: sessionId,
+          sessionId,
           timestamp: new Date().toISOString(),
           source: 'brickworks_app'
         })
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const result = await response.json();
-      handleAIResponse(result);
+      const result: AIResponse = await response.json();
+      
+      if (result.success) {
+        addMessage(result.message, 'assistant');
+      } else {
+        addMessage(result.message || 'An error occurred', 'assistant', true);
+      }
       
     } catch (error) {
       console.error('AI webhook error:', error);
-      addChatMessage('Sorry, I encountered an error connecting to the AI assistant. Please check if the N8N webhook is running and try again.', 'assistant', 'error');
-      showErrorToast('Connection failed. Please check your N8N webhook endpoint.');
+      addMessage('Connection failed. Tap to retry.', 'assistant', true);
     } finally {
-      setIsLoading(false);
       setIsTyping(false);
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
-
-    const userMessage = inputValue.trim();
-    setInputValue('');
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
     
-    // Add user message to chat
-    addChatMessage(userMessage, 'user', 'sent');
-    
-    // Send to AI
-    await sendMessageToAI(userMessage);
-    
-    // Focus input for next message
-    setTimeout(() => inputRef.current?.focus(), 100);
+    const userMessage = input.trim();
+    setInput('');
+    addMessage(userMessage, 'user');
+    await sendMessage(userMessage);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      handleSend();
     }
   };
 
-  const handleQuickCommand = (command: string) => {
-    setInputValue(command);
-    inputRef.current?.focus();
+  const handleRetry = async (message: ChatMessage) => {
+    if (message.role === 'user') {
+      await sendMessage(message.content);
+    }
   };
 
-  const quickCommands = [
-    { icon: BarChart3, label: "Today's Stats", command: "Show me today's production and sales summary" },
-    { icon: DollarSign, label: "Add Sale", command: "Which customer bought how many bricks?" },
-    { icon: Package, label: "Stock Check", command: "What is my current inventory and material stock?" },
-    { icon: HelpCircle, label: "Help", command: "Show me command examples" },
+  const quickPrompts = [
+    "This month profit",
+    "Top due customers",
+    "Production vs sales",
+    "Material usage this week"
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-2">🤖 AI Assistant</h1>
-          <p className="text-muted-foreground text-lg">Chat with your factory assistant for queries and commands</p>
-          <div className="mt-4">
-            <div className="card-dark p-4 inline-block">
-              <p className="text-sm text-secondary">Session Active • AI Commands Ready</p>
-            </div>
-          </div>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1C1C1E' }}>
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#2A2A2E' }}>
+        <h1 className="text-lg font-semibold" style={{ color: '#FFFFFF' }}>AI Assistant</h1>
+        
+        {/* Environment Toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setEnv('test')}
+            className="px-3 py-1 text-sm rounded-md transition-colors"
+            style={{
+              backgroundColor: env === 'test' ? '#FF6B00' : 'transparent',
+              color: env === 'test' ? '#FFFFFF' : '#9A9AA0',
+              border: '1px solid',
+              borderColor: env === 'test' ? '#FF6B00' : '#2A2A2E'
+            }}
+          >
+            Test
+          </button>
+          <button
+            onClick={() => setEnv('prod')}
+            className="px-3 py-1 text-sm rounded-md transition-colors"
+            style={{
+              backgroundColor: env === 'prod' ? '#FF6B00' : 'transparent',
+              color: env === 'prod' ? '#FFFFFF' : '#9A9AA0',
+              border: '1px solid',
+              borderColor: env === 'prod' ? '#FF6B00' : '#2A2A2E'
+            }}
+          >
+            Prod
+          </button>
         </div>
 
-        {/* Chat Container */}
-        <div className="card-dark min-h-[600px] flex flex-col">
-          {/* Messages Area */}
-          <div className="flex-1 p-6 overflow-y-auto max-h-[500px]">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg p-4 ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : message.status === 'error'
-                        ? 'bg-destructive/20 text-destructive border border-destructive/30'
-                        : 'bg-secondary text-secondary-foreground'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-2">
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {message.status === 'error' && ' • Failed'}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Typing Indicator */}
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-secondary text-secondary-foreground rounded-lg p-4 max-w-[80%]">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                      <span className="text-sm text-muted-foreground">AI Assistant is typing...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div ref={messagesEndRef} />
+        {/* Clear Button */}
+        <button
+          onClick={clearChat}
+          className="p-2 rounded-md transition-colors"
+          style={{ color: '#9A9AA0' }}
+          title="Clear chat"
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2A2A2E'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </header>
+
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {messages.length === 0 && (
+          <div className="text-center py-8" style={{ color: '#9A9AA0' }}>
+            <p className="text-sm">Start a conversation with your factory assistant</p>
           </div>
-
-          {/* Quick Commands */}
-          <div className="border-t border-border p-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-              {quickCommands.map((cmd, index) => {
-                const Icon = cmd.icon;
-                return (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuickCommand(cmd.command)}
-                    className="flex items-center gap-2 h-auto py-2 text-xs"
-                    disabled={isLoading}
-                  >
-                    <Icon className="h-3 w-3" />
-                    {cmd.label}
-                  </Button>
-                );
-              })}
-            </div>
-
-            {/* Input Area */}
-            <div className="flex items-center space-x-2">
-              <div className="flex-1 relative">
-                <Input
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask about your factory or give commands..."
-                  disabled={isLoading}
-                  className="pr-12 bg-background border-border focus:border-primary"
-                  autoFocus
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-accent"
-                  disabled={true}
-                  title="Voice input (coming soon)"
-                >
-                  <Mic className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </div>
-              <Button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isLoading}
-                className="h-10 px-4"
-              >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+        )}
+        
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className="max-w-[85%] rounded-lg px-4 py-2 cursor-pointer"
+              style={{
+                backgroundColor: msg.role === 'user' 
+                  ? '#FF6B00' 
+                  : msg.isError 
+                  ? '#DC2626' 
+                  : '#2A2A2E',
+                color: '#FFFFFF'
+              }}
+              onClick={() => msg.isError && handleRetry(msg)}
+            >
+              <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+              <p className="text-xs mt-1 opacity-70">
+                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
             </div>
           </div>
-        </div>
+        ))}
 
-        {/* Command Examples */}
-        <div className="mt-6 card-dark p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Example Commands</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-primary font-medium mb-2">Data Entry Commands:</h4>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>• "Kumara bought 50 bricks at ₹32 each, paid ₹1000"</li>
-                <li>• "Add production: made 200 4-inch bricks today"</li>
-                <li>• "Material usage: used 3 bags of cement for batch production"</li>
-                <li>• "Ravi paid ₹5000 towards his outstanding balance"</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-primary font-medium mb-2">Query Commands:</h4>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>• "What is today's total production?"</li>
-                <li>• "Show me all customers with unpaid balances"</li>
-                <li>• "How much cement stock do we have?"</li>
-                <li>• "Which customer owes the most money?"</li>
-              </ul>
+        {/* Typing Indicator */}
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="rounded-lg px-4 py-2" style={{ backgroundColor: '#2A2A2E', color: '#9A9AA0' }}>
+              <p className="text-sm">Assistant is thinking...</p>
             </div>
           </div>
+        )}
+        
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Quick Prompts */}
+      <div className="px-4 py-2 flex gap-2 overflow-x-auto">
+        {quickPrompts.map((prompt, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              setInput(prompt);
+              inputRef.current?.focus();
+            }}
+            disabled={isTyping}
+            className="px-3 py-1 text-xs rounded-md whitespace-nowrap transition-colors flex-shrink-0"
+            style={{
+              backgroundColor: '#2A2A2E',
+              color: '#9A9AA0',
+              border: '1px solid #2A2A2E'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#FF6B00';
+              e.currentTarget.style.color = '#FFFFFF';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#2A2A2E';
+              e.currentTarget.style.color = '#9A9AA0';
+            }}
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      {/* Input Bar */}
+      <div className="px-4 py-3 border-t" style={{ borderColor: '#2A2A2E' }}>
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about sales, production, dues, profit…"
+            disabled={isTyping}
+            rows={1}
+            className="flex-1 px-4 py-2 rounded-lg text-sm resize-none focus:outline-none"
+            style={{
+              backgroundColor: '#2A2A2E',
+              color: '#FFFFFF',
+              border: '1px solid #2A2A2E',
+              minHeight: '40px',
+              maxHeight: '120px'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#FF6B00'}
+            onBlur={(e) => e.target.style.borderColor = '#2A2A2E'}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isTyping}
+            className="p-2 rounded-lg transition-colors"
+            style={{
+              backgroundColor: input.trim() && !isTyping ? '#FF6B00' : '#2A2A2E',
+              color: '#FFFFFF',
+              minWidth: '40px',
+              minHeight: '40px'
+            }}
+          >
+            <Send className="h-5 w-5" />
+          </button>
         </div>
       </div>
     </div>
