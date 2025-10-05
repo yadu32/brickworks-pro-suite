@@ -6,7 +6,6 @@ import MaterialsModule from '@/components/MaterialsModule';
 import SalesModule from '@/components/SalesModule';
 import PaymentsModule from '@/components/PaymentsModule';
 import ReportsModule from '@/components/ReportsModule';
-import AIAssistant from '@/components/AIAssistant';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -20,6 +19,12 @@ const Index = () => {
     return () => window.removeEventListener('changeTab', handleTabChange as EventListener);
   }, []);
 
+      {activeTab === 'dashboard' && <Dashboard />}
+      {activeTab === 'production' && <ProductionModule />}
+      {activeTab === 'materials' && <MaterialsModule />}
+      {activeTab === 'sales' && <SalesModule />}
+      {activeTab === 'payments' && <PaymentsModule />}
+      {activeTab === 'weekly' && <ReportsModule />}
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,7 +35,6 @@ const Index = () => {
       {activeTab === 'sales' && <SalesModule />}
       {activeTab === 'payments' && <PaymentsModule />}
       {activeTab === 'weekly' && <ReportsModule />}
-      {activeTab === 'ai-assistant' && <AIAssistant />}
     </div>
   );
 };

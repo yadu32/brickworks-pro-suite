@@ -21,7 +21,6 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
     { id: 'sales', label: 'Sales', icon: ShoppingCart },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'weekly', label: 'Weekly', icon: Calendar },
-    { id: 'ai-assistant', label: '🤖 AI Assistant', icon: BarChart3 },
   ];
 
   return (
