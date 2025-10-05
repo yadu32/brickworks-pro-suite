@@ -5,7 +5,8 @@ import {
   Package, 
   ShoppingCart, 
   CreditCard, 
-  Calendar 
+  Calendar,
+  Settings 
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -21,6 +22,7 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
     { id: 'sales', label: 'Sales', icon: ShoppingCart },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'weekly', label: 'Weekly', icon: Calendar },
+    { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'ai-assistant', label: '🤖 AI Assistant', icon: BarChart3 },
   ];
 

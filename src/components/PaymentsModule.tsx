@@ -38,6 +38,14 @@ const PaymentsModule = () => {
   });
   const { toast } = useToast();
 
+  // Auto-calculated wages
+  const [productionWages, setProductionWages] = useState(0);
+  const [loadingWages, setLoadingWages] = useState(0);
+  const [productionPunches, setProductionPunches] = useState(0);
+  const [loadingBricks, setLoadingBricks] = useState(0);
+  const [productionRate, setProductionRate] = useState(15);
+  const [loadingRate, setLoadingRate] = useState(2);
+
   const [paymentForm, setPaymentForm] = useState({
     date: new Date().toISOString().split('T')[0],
     employee_name: '',
@@ -224,7 +232,55 @@ const PaymentsModule = () => {
 
   useEffect(() => {
     loadPayments();
+    calculateAutoWages();
   }, [dateFilter]);
+
+  const calculateAutoWages = async () => {
+    try {
+      // Get active rates
+      const { data: ratesData } = await supabase
+        .from("factory_rates")
+        .select("*")
+        .eq("is_active", true);
+
+      if (ratesData) {
+        const prodRate = ratesData.find((r) => r.rate_type === "production_per_punch");
+        const loadRate = ratesData.find((r) => r.rate_type === "loading_per_brick");
+        if (prodRate) setProductionRate(prodRate.rate_amount);
+        if (loadRate) setLoadingRate(loadRate.rate_amount);
+      }
+
+      // Calculate production wages
+      const { data: productionData } = await supabase
+        .from("bricks_production")
+        .select("number_of_punches")
+        .gte("date", dateFilter.start)
+        .lte("date", dateFilter.end);
+
+      const totalPunches = productionData?.reduce(
+        (sum, record) => sum + record.number_of_punches,
+        0
+      ) || 0;
+      setProductionPunches(totalPunches);
+      setProductionWages(totalPunches * productionRate);
+
+      // Calculate loading wages
+      const { data: salesData } = await supabase
+        .from("sales")
+        .select("quantity_sold")
+        .gte("date", dateFilter.start)
+        .lte("date", dateFilter.end);
+
+      const totalBricks = salesData?.reduce(
+        (sum, record) => sum + record.quantity_sold,
+        0
+      ) || 0;
+      setLoadingBricks(totalBricks);
+      setLoadingWages(totalBricks * loadingRate);
+    } catch (error) {
+      console.error("Error calculating auto wages:", error);
+    }
+  };
 
   if (selectedEmployee) {
     const employee = employees.find(e => e.employee_name === selectedEmployee);

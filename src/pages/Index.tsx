@@ -7,6 +7,7 @@ import SalesModule from '@/components/SalesModule';
 import PaymentsModule from '@/components/PaymentsModule';
 import ReportsModule from '@/components/ReportsModule';
 import AIAssistant from '@/components/AIAssistant';
+import { FactoryRatesSettings } from '@/components/FactoryRatesSettings';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -30,6 +31,7 @@ const Index = () => {
       {activeTab === 'sales' && <SalesModule />}
       {activeTab === 'payments' && <PaymentsModule />}
       {activeTab === 'weekly' && <ReportsModule />}
+      {activeTab === 'settings' && <FactoryRatesSettings />}
       {activeTab === 'ai-assistant' && <AIAssistant />}
     </div>
   );

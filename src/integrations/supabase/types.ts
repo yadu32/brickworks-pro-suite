@@ -118,6 +118,47 @@ export type Database = {
         }
         Relationships: []
       }
+      factory_rates: {
+        Row: {
+          brick_type_id: string | null
+          created_at: string
+          effective_date: string
+          id: string
+          is_active: boolean
+          rate_amount: number
+          rate_type: string
+          updated_at: string
+        }
+        Insert: {
+          brick_type_id?: string | null
+          created_at?: string
+          effective_date?: string
+          id?: string
+          is_active?: boolean
+          rate_amount: number
+          rate_type: string
+          updated_at?: string
+        }
+        Update: {
+          brick_type_id?: string | null
+          created_at?: string
+          effective_date?: string
+          id?: string
+          is_active?: boolean
+          rate_amount?: number
+          rate_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_rates_brick_type_id_fkey"
+            columns: ["brick_type_id"]
+            isOneToOne: false
+            referencedRelation: "brick_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_purchases: {
         Row: {
           created_at: string

@@ -14,6 +14,7 @@ interface WeeklyReport {
     fourInch: number;
     sixInch: number;
     total: number;
+    totalPunches: number;
   };
   sales: {
     totalRevenue: number;
@@ -31,6 +32,12 @@ interface WeeklyReport {
     bonus: number;
     incentive: number;
     total: number;
+  };
+  cogs: {
+    materialCosts: number;
+    productionWages: number;
+    loadingWages: number;
+    totalCOGS: number;
   };
 }
 
@@ -81,12 +88,15 @@ const ReportsModule = () => {
         .gte('date', dateRange.startDate)
         .lte('date', dateRange.endDate);
 
+      const totalPunches = productionData?.reduce((sum, p) => sum + p.number_of_punches, 0) || 0;
+      
       const production = {
         fourInch: productionData?.filter(p => p.brick_type_id === fourInchType?.id)
           .reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
         sixInch: productionData?.filter(p => p.brick_type_id === sixInchType?.id)
           .reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
-        total: productionData?.reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0
+        total: productionData?.reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
+        totalPunches
       };
 
       // Sales data
@@ -151,13 +161,36 @@ const ReportsModule = () => {
         total: paymentsData?.reduce((sum, p) => sum + p.amount, 0) || 0
       };
 
+      // Get factory rates for COGS calculation
+      const { data: ratesData } = await supabase
+        .from("factory_rates")
+        .select("*")
+        .eq("is_active", true);
+
+      const productionRate = ratesData?.find((r) => r.rate_type === "production_per_punch")?.rate_amount || 15;
+      const loadingRate = ratesData?.find((r) => r.rate_type === "loading_per_brick")?.rate_amount || 2;
+
+      // Calculate COGS
+      const materialCosts = materials.cement.cost + materials.dust.cost + materials.diesel.cost;
+      const productionWages = totalPunches * productionRate;
+      const loadingWages = sales.totalQuantity * loadingRate;
+      const totalCOGS = materialCosts + productionWages + loadingWages;
+
+      const cogs = {
+        materialCosts,
+        productionWages,
+        loadingWages,
+        totalCOGS
+      };
+
       setReportData({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
         production,
         sales,
         materials,
-        payments
+        payments,
+        cogs
       });
 
       toast({ title: 'Report generated successfully' });
@@ -442,6 +475,46 @@ const ReportsModule = () => {
               </Card>
             </section>
 
+            {/* COGS Breakdown */}
+            <section className="animate-fade-in">
+              <Card className="card-metric">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Cost of Goods Sold (COGS) Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="text-center">
+                        <p className="text-secondary">Material Costs</p>
+                        <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.cogs.materialCosts)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-secondary">Production Wages</p>
+                        <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.cogs.productionWages)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {reportData.production.totalPunches} punches
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-secondary">Loading Wages</p>
+                        <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.cogs.loadingWages)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {reportData.sales.totalQuantity} bricks
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-secondary">Total COGS</p>
+                        <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
             {/* Financial Overview */}
             <section className="animate-fade-in">
               <Card className="card-metric">
@@ -458,27 +531,27 @@ const ReportsModule = () => {
                       <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-secondary">Material Costs</p>
-                      <p className="text-2xl font-bold text-warning">
-                        {formatCurrency(
-                          reportData.materials.cement.cost + 
-                          reportData.materials.dust.cost + 
-                          reportData.materials.diesel.cost
-                        )}
-                      </p>
+                      <p className="text-secondary">Total COGS</p>
+                      <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-secondary">Employee Payments</p>
-                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
+                      <p className="text-secondary">Gross Profit</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {formatCurrency(reportData.sales.totalRevenue - reportData.cogs.totalCOGS)}
+                      </p>
                     </div>
                     <div className="text-center">
                       <p className="text-secondary">Net Profit</p>
                       <p className="text-2xl font-bold text-primary">
                         {formatCurrency(
-                          reportData.sales.totalRevenue - 
-                          (reportData.materials.cement.cost + reportData.materials.dust.cost + reportData.materials.diesel.cost) - 
-                          reportData.payments.total
+                          reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total
                         )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {reportData.sales.totalRevenue > 0 
+                          ? `${(((reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total) / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
+                          : 'N/A'
+                        }
                       </p>
                     </div>
                   </div>
