@@ -277,6 +277,45 @@ export type Database = {
         }
         Relationships: []
       }
+      other_expenses: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          description: string
+          expense_type: string
+          id: string
+          notes: string | null
+          receipt_number: string | null
+          updated_at: string
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date: string
+          description: string
+          expense_type: string
+          id?: string
+          notes?: string | null
+          receipt_number?: string | null
+          updated_at?: string
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string
+          expense_type?: string
+          id?: string
+          notes?: string | null
+          receipt_number?: string | null
+          updated_at?: string
+          vendor_name?: string | null
+        }
+        Relationships: []
+      }
       sales: {
         Row: {
           amount_received: number

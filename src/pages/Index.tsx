@@ -6,10 +6,7 @@ import MaterialsModule from '@/components/MaterialsModule';
 import SalesModule from '@/components/SalesModule';
 import PaymentsModule from '@/components/PaymentsModule';
 import ReportsModule from '@/components/ReportsModule';
-import AnalyticsModule from '@/components/AnalyticsModule';
-import MaintenanceModule from '@/components/MaintenanceModule';
-import TraceabilityModule from '@/components/TraceabilityModule';
-import BillingModule from '@/components/BillingModule';
+import OtherExpensesModule from '@/components/OtherExpensesModule';
 import { FactoryRatesSettings } from '@/components/FactoryRatesSettings';
 
 const Index = () => {
@@ -33,10 +30,7 @@ const Index = () => {
       {activeTab === 'materials' && <MaterialsModule />}
       {activeTab === 'sales' && <SalesModule />}
       {activeTab === 'payments' && <PaymentsModule />}
-      {activeTab === 'maintenance' && <MaintenanceModule />}
-      {activeTab === 'traceability' && <TraceabilityModule />}
-      {activeTab === 'billing' && <BillingModule />}
-      {activeTab === 'analytics' && <AnalyticsModule />}
+      {activeTab === 'expenses' && <OtherExpensesModule />}
       {activeTab === 'weekly' && <ReportsModule />}
       {activeTab === 'settings' && <FactoryRatesSettings />}
     </div>

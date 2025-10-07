@@ -7,10 +7,7 @@ import {
   CreditCard, 
   Calendar,
   Settings,
-  Wrench,
-  PackageSearch,
-  FileText,
-  TrendingUp
+  TrendingDown
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -25,10 +22,7 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
     { id: 'materials', label: 'Materials', icon: Package },
     { id: 'sales', label: 'Sales', icon: ShoppingCart },
     { id: 'payments', label: 'Payments', icon: CreditCard },
-    { id: 'maintenance', label: 'Maintenance', icon: Wrench },
-    { id: 'traceability', label: 'Traceability', icon: PackageSearch },
-    { id: 'billing', label: 'Billing', icon: FileText },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+    { id: 'expenses', label: 'Other Expenses', icon: TrendingDown },
     { id: 'weekly', label: 'Reports', icon: Calendar },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
