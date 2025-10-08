@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp } from 'lucide-react';
+import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Share2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { generateInvoicePDF, shareViaWhatsApp, shareViaEmail, downloadPDF } from '@/utils/invoiceGenerator';
 
 interface BrickType {
   id: string;
@@ -47,6 +48,7 @@ const SalesModule = () => {
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [customerSales, setCustomerSales] = useState<Sale[]>([]);
+  const [periodFilter, setPeriodFilter] = useState<'today' | 'week' | 'month'>('week');
   const { toast } = useToast();
 
   const [saleForm, setSaleForm] = useState({
@@ -335,6 +337,73 @@ const SalesModule = () => {
     return { status: 'Partial', color: 'warning' };
   };
 
+  const handleShareInvoice = async (sale: Sale, method: 'whatsapp' | 'email' | 'download') => {
+    try {
+      const invoiceData = {
+        invoiceNumber: `SALE-${sale.id.slice(0, 8).toUpperCase()}`,
+        date: sale.date,
+        customerName: sale.customer_name,
+        customerPhone: sale.customer_phone,
+        brickTypeName: sale.brick_types.type_name,
+        quantity: sale.quantity_sold,
+        ratePerBrick: sale.rate_per_brick,
+        totalAmount: sale.total_amount,
+        amountReceived: sale.amount_received,
+        balanceDue: sale.balance_due,
+        paymentStatus: getPaymentStatus(sale).status
+      };
+
+      const pdfBlob = await generateInvoicePDF(invoiceData);
+
+      if (method === 'whatsapp') {
+        shareViaWhatsApp(invoiceData, pdfBlob);
+      } else if (method === 'email') {
+        shareViaEmail(invoiceData);
+      } else {
+        downloadPDF(pdfBlob, `invoice-${invoiceData.invoiceNumber}.pdf`);
+      }
+
+      toast({ title: 'Invoice generated successfully' });
+    } catch (error) {
+      toast({ title: 'Error generating invoice', variant: 'destructive' });
+      console.error(error);
+    }
+  };
+
+  const getFilteredSales = () => {
+    const now = new Date();
+    const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Monday
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.date);
+      if (periodFilter === 'today') return saleDate >= startOfToday;
+      if (periodFilter === 'week') return saleDate >= startOfWeek;
+      if (periodFilter === 'month') return saleDate >= startOfMonth;
+      return true;
+    });
+  };
+
+  const getPeriodAnalytics = () => {
+    const filteredSales = getFilteredSales();
+    const totalRevenue = filteredSales.reduce((sum, s) => sum + s.total_amount, 0);
+    const totalReceived = filteredSales.reduce((sum, s) => sum + s.amount_received, 0);
+    const outstandingBalance = filteredSales.reduce((sum, s) => sum + s.balance_due, 0);
+    const averageSaleValue = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
+    const paymentCollectionRate = totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 0;
+
+    return {
+      totalRevenue,
+      totalReceived,
+      outstandingBalance,
+      averageSaleValue,
+      paymentCollectionRate,
+      salesCount: filteredSales.length
+    };
+  };
+
   useEffect(() => {
     loadBrickTypes();
     loadSales();
@@ -516,6 +585,8 @@ const SalesModule = () => {
     );
   }
 
+  const analytics = getPeriodAnalytics();
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -648,9 +719,111 @@ const SalesModule = () => {
           </Dialog>
         </div>
 
-        {/* Sales Summary */}
+        {/* Sales Analytics Dashboard */}
         <section className="animate-fade-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-foreground">Sales Analytics</h2>
+            <div className="flex gap-2">
+              <Button 
+                variant={periodFilter === 'today' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('today')}
+              >
+                Today
+              </Button>
+              <Button 
+                variant={periodFilter === 'week' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('week')}
+              >
+                This Week
+              </Button>
+              <Button 
+                variant={periodFilter === 'month' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('month')}
+              >
+                This Month
+              </Button>
+            </div>
+          </div>
+
+          {/* Analytics Cards Row 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="card-metric">
+              <div className="text-center">
+                <IndianRupee className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-secondary">Period Revenue</p>
+                <p className="text-2xl font-bold text-primary">
+                  {formatCurrency(analytics.totalRevenue)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {analytics.salesCount} sales
+                </p>
+              </div>
+            </div>
+            <div className="card-metric">
+              <div className="text-center">
+                <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
+                <p className="text-secondary">Avg Sale Value</p>
+                <p className="text-2xl font-bold text-success">
+                  {formatCurrency(analytics.averageSaleValue)}
+                </p>
+              </div>
+            </div>
+            <div className="card-metric">
+              <div className="text-center">
+                <IndianRupee className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-secondary">Outstanding Balance</p>
+                <p className="text-2xl font-bold text-warning">
+                  {formatCurrency(analytics.outstandingBalance)}
+                </p>
+              </div>
+            </div>
+            <div className="card-metric">
+              <div className="text-center">
+                <ShoppingCart className="h-8 w-8 text-secondary mx-auto mb-2" />
+                <p className="text-secondary">Collection Rate</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {analytics.paymentCollectionRate.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatCurrency(analytics.totalReceived)} received
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Top Customers in Period */}
+          <div className="card-dark p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Top 5 Customers</h3>
+            <div className="space-y-3">
+              {customers.slice(0, 5).map((customer, index) => (
+                <div key={customer.customer_name} className="flex items-center justify-between p-3 bg-accent/5 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{customer.customer_name}</p>
+                      <p className="text-xs text-secondary">{customer.transaction_count} transactions</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-success">{formatCurrency(customer.total_sales)}</p>
+                    {customer.balance_due > 0 && (
+                      <p className="text-xs text-warning">Due: {formatCurrency(customer.balance_due)}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Overall Summary */}
+        <section className="animate-fade-in">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Overall Summary</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="card-metric">
               <div className="text-center">
@@ -809,6 +982,30 @@ const SalesModule = () => {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleShareInvoice(sale, 'download')}
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleShareInvoice(sale, 'whatsapp')}
+                              title="Share via WhatsApp"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleShareInvoice(sale, 'email')}
+                              title="Share via Email"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
                             <Button 
                               size="sm" 
                               variant="outline"

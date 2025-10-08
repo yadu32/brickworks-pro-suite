@@ -15,6 +15,8 @@ interface WeeklyReport {
     sixInch: number;
     total: number;
     totalPunches: number;
+    fourInchPunches: number;
+    sixInchPunches: number;
   };
   sales: {
     totalRevenue: number;
@@ -38,6 +40,14 @@ interface WeeklyReport {
     productionWages: number;
     loadingWages: number;
     totalCOGS: number;
+  };
+  otherExpenses: {
+    transport: number;
+    utilities: number;
+    officeSalaries: number;
+    repairs: number;
+    miscellaneous: number;
+    total: number;
   };
 }
 
@@ -89,6 +99,10 @@ const ReportsModule = () => {
         .lte('date', dateRange.endDate);
 
       const totalPunches = productionData?.reduce((sum, p) => sum + p.number_of_punches, 0) || 0;
+      const fourInchPunches = productionData?.filter(p => p.brick_type_id === fourInchType?.id)
+        .reduce((sum, p) => sum + p.number_of_punches, 0) || 0;
+      const sixInchPunches = productionData?.filter(p => p.brick_type_id === sixInchType?.id)
+        .reduce((sum, p) => sum + p.number_of_punches, 0) || 0;
       
       const production = {
         fourInch: productionData?.filter(p => p.brick_type_id === fourInchType?.id)
@@ -96,7 +110,9 @@ const ReportsModule = () => {
         sixInch: productionData?.filter(p => p.brick_type_id === sixInchType?.id)
           .reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
         total: productionData?.reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
-        totalPunches
+        totalPunches,
+        fourInchPunches,
+        sixInchPunches
       };
 
       // Sales data
@@ -183,6 +199,22 @@ const ReportsModule = () => {
         totalCOGS
       };
 
+      // Other Expenses data
+      const { data: expensesData } = await supabase
+        .from('other_expenses')
+        .select('*')
+        .gte('date', dateRange.startDate)
+        .lte('date', dateRange.endDate);
+
+      const otherExpenses = {
+        transport: expensesData?.filter(e => e.expense_type === 'Transport').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        utilities: expensesData?.filter(e => e.expense_type === 'Utilities').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        officeSalaries: expensesData?.filter(e => e.expense_type === 'Office Salaries').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        repairs: expensesData?.filter(e => e.expense_type === 'Repairs & Maintenance').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        miscellaneous: expensesData?.filter(e => e.expense_type === 'Miscellaneous').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        total: expensesData?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
+      };
+
       setReportData({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
@@ -190,7 +222,8 @@ const ReportsModule = () => {
         sales,
         materials,
         payments,
-        cogs
+        cogs,
+        otherExpenses
       });
 
       toast({ title: 'Report generated successfully' });
@@ -313,6 +346,31 @@ const ReportsModule = () => {
                     <p className="text-foreground">
                       Period: {new Date(reportData.startDate).toLocaleDateString('en-IN')} to {new Date(reportData.endDate).toLocaleDateString('en-IN')}
                     </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Punch Count Header Cards */}
+            <section className="animate-fade-in">
+              <Card className="card-metric">
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                      <p className="text-secondary">Total Punches</p>
+                      <p className="text-3xl font-bold text-primary">{reportData.production.totalPunches.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <Package className="h-8 w-8 text-success mx-auto mb-2" />
+                      <p className="text-secondary">4-inch Punches</p>
+                      <p className="text-2xl font-bold text-success">{reportData.production.fourInchPunches.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <Package className="h-8 w-8 text-warning mx-auto mb-2" />
+                      <p className="text-secondary">6-inch Punches</p>
+                      <p className="text-2xl font-bold text-warning">{reportData.production.sixInchPunches.toLocaleString()}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -515,6 +573,56 @@ const ReportsModule = () => {
               </Card>
             </section>
 
+            {/* Operating Expenses */}
+            <section className="animate-fade-in">
+              <Card className="card-dark">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Operating Expenses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 text-secondary">Category</th>
+                          <th className="text-left py-3 px-4 text-secondary">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Transport</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.transport)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Utilities</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.utilities)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Office Salaries</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.officeSalaries)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Repairs & Maintenance</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.repairs)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Miscellaneous</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.miscellaneous)}</td>
+                        </tr>
+                        <tr className="border-t-2 border-primary">
+                          <td className="py-3 px-4 text-foreground font-bold">Total Operating Expenses</td>
+                          <td className="py-3 px-4 text-destructive font-bold">{formatCurrency(reportData.otherExpenses.total)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
             {/* Financial Overview */}
             <section className="animate-fade-in">
               <Card className="card-metric">
@@ -525,7 +633,7 @@ const ReportsModule = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                     <div className="text-center">
                       <p className="text-secondary">Total Revenue</p>
                       <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
@@ -535,21 +643,23 @@ const ReportsModule = () => {
                       <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-secondary">Gross Profit</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {formatCurrency(reportData.sales.totalRevenue - reportData.cogs.totalCOGS)}
-                      </p>
+                      <p className="text-secondary">Employee Payments</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Operating Expenses</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.otherExpenses.total)}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-secondary">Net Profit</p>
                       <p className="text-2xl font-bold text-primary">
                         {formatCurrency(
-                          reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total
+                          reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {reportData.sales.totalRevenue > 0 
-                          ? `${(((reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total) / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
+                          ? `${(((reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total) / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
                           : 'N/A'
                         }
                       </p>
