@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Share2, Mail } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Share2, Mail, Search, X, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +38,7 @@ interface CustomerSummary {
   total_received: number;
   balance_due: number;
   transaction_count: number;
+  last_transaction_date: string;
 }
 
 const SalesModule = () => {
@@ -50,6 +51,13 @@ const SalesModule = () => {
   const [customerSales, setCustomerSales] = useState<Sale[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDuesOnly, setShowDuesOnly] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentCustomer, setPaymentCustomer] = useState<CustomerSummary | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    notes: ''
+  });
   const { toast } = useToast();
 
   const [saleForm, setSaleForm] = useState({
@@ -110,7 +118,7 @@ const SalesModule = () => {
     const customerMap = new Map<string, CustomerSummary>();
     
     salesData.forEach(sale => {
-      const key = sale.customer_name; // Use exact name as key
+      const key = sale.customer_name;
       if (!customerMap.has(key)) {
         customerMap.set(key, {
           customer_name: sale.customer_name,
@@ -118,7 +126,8 @@ const SalesModule = () => {
           total_sales: 0,
           total_received: 0,
           balance_due: 0,
-          transaction_count: 0
+          transaction_count: 0,
+          last_transaction_date: sale.date
         });
       }
       
@@ -127,6 +136,11 @@ const SalesModule = () => {
       customer.total_received += sale.amount_received;
       customer.balance_due += sale.balance_due;
       customer.transaction_count += 1;
+      
+      // Update to most recent transaction date
+      if (new Date(sale.date) > new Date(customer.last_transaction_date)) {
+        customer.last_transaction_date = sale.date;
+      }
     });
     
     setCustomers(Array.from(customerMap.values()).sort((a, b) => b.total_sales - a.total_sales));
@@ -371,7 +385,7 @@ const SalesModule = () => {
     }
   };
 
-  const getFilteredCustomers = () => {
+  const filteredCustomers = useMemo(() => {
     let filtered = customers;
     
     // Apply search filter
@@ -389,6 +403,42 @@ const SalesModule = () => {
     }
     
     return filtered;
+  }, [customers, searchQuery, showDuesOnly]);
+
+  const handlePayDue = (customer: CustomerSummary) => {
+    setPaymentCustomer(customer);
+    setPaymentForm({
+      amount: customer.balance_due.toString(),
+      date: new Date().toISOString().split('T')[0],
+      notes: ''
+    });
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!paymentCustomer) return;
+
+    const paymentAmount = Number(paymentForm.amount);
+    if (paymentAmount <= 0) {
+      toast({ title: 'Invalid amount', variant: 'destructive' });
+      return;
+    }
+
+    // Apply FIFO payment logic
+    await applyFIFOPayments(paymentCustomer.customer_name, paymentAmount);
+    
+    await loadSales();
+    setIsPaymentDialogOpen(false);
+    setPaymentCustomer(null);
+    setPaymentForm({
+      amount: '',
+      date: new Date().toISOString().split('T')[0],
+      notes: ''
+    });
+    
+    toast({ title: 'Payment recorded successfully' });
   };
 
   useEffect(() => {
@@ -744,67 +794,187 @@ const SalesModule = () => {
           </div>
         </section>
 
-        {/* Top Customers */}
+        {/* Customers Table with Search and Filter */}
         <section className="animate-slide-up">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Top Customers</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-foreground">Customers</h2>
+            <div className="flex gap-3 items-center">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
+                <Input
+                  type="text"
+                  placeholder="Search customers by name or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10 w-80"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Due Filter Toggle */}
+              <Button
+                variant={showDuesOnly ? "default" : "outline"}
+                onClick={() => setShowDuesOnly(!showDuesOnly)}
+                className={showDuesOnly ? "btn-primary" : ""}
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                {showDuesOnly ? 'Show All' : 'Due Only'}
+              </Button>
+            </div>
+          </div>
+          
+          {/* Filter Results Info */}
+          {(searchQuery || showDuesOnly) && (
+            <p className="text-sm text-secondary mb-3">
+              Showing {filteredCustomers.length} of {customers.length} customers
+              {showDuesOnly && ' with dues'}
+            </p>
+          )}
+
           <div className="card-dark">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
               <table className="w-full">
-                <thead>
+                <thead className="sticky top-0 bg-card z-10">
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-secondary">Customer</th>
-                    <th className="text-left py-3 px-4 text-secondary">Contact</th>
-                    <th className="text-left py-3 px-4 text-secondary">Total Sales</th>
-                    <th className="text-left py-3 px-4 text-secondary">Amount Received</th>
-                    <th className="text-left py-3 px-4 text-secondary">Balance Due</th>
-                    <th className="text-left py-3 px-4 text-secondary">Transactions</th>
-                    <th className="text-left py-3 px-4 text-secondary">Actions</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Customer</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Contact</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Total Sales</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Amount Received</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Balance Due</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Last Transaction</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.slice(0, 10).map((customer) => (
-                    <tr key={customer.customer_name} className="border-b border-border hover:bg-accent/5">
-                      <td className="py-3 px-4 text-foreground font-medium">
-                        {customer.customer_name}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {customer.customer_phone && (
-                          <div className="flex items-center">
-                            <Phone className="h-4 w-4 mr-2 text-secondary" />
-                            {customer.customer_phone}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {formatCurrency(customer.total_sales)}
-                      </td>
-                      <td className="py-3 px-4 text-success">
-                        {formatCurrency(customer.total_received)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`${customer.balance_due > 0 ? 'text-warning' : 'text-success'}`}>
-                          {formatCurrency(customer.balance_due)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {customer.transaction_count}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => viewCustomerDetails(customer.customer_name)}
-                        >
-                          View Details
-                        </Button>
+                  {filteredCustomers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-secondary">
+                        {searchQuery || showDuesOnly 
+                          ? 'No customers found matching your filters' 
+                          : 'No customers yet'}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredCustomers.map((customer) => (
+                      <tr key={customer.customer_name} className="border-b border-border hover:bg-accent/5">
+                        <td className="py-3 px-4 text-foreground font-medium">
+                          {customer.customer_name}
+                        </td>
+                        <td className="py-3 px-4 text-foreground">
+                          {customer.customer_phone && (
+                            <div className="flex items-center">
+                              <Phone className="h-4 w-4 mr-2 text-secondary" />
+                              {customer.customer_phone}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-foreground">
+                          {formatCurrency(customer.total_sales)}
+                        </td>
+                        <td className="py-3 px-4 text-success">
+                          {formatCurrency(customer.total_received)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`font-medium ${customer.balance_due > 0 ? 'text-warning' : 'text-success'}`}>
+                            {formatCurrency(customer.balance_due)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-foreground text-sm">
+                          {new Date(customer.last_transaction_date).toLocaleDateString('en-IN')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => viewCustomerDetails(customer.customer_name)}
+                            >
+                              View Details
+                            </Button>
+                            {customer.balance_due > 0 && (
+                              <Button 
+                                size="sm" 
+                                className="btn-primary"
+                                onClick={() => handlePayDue(customer)}
+                              >
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                Pay Due
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </section>
+
+        {/* Payment Dialog */}
+        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+          <DialogContent className="modal-content max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Record Payment</DialogTitle>
+            </DialogHeader>
+            {paymentCustomer && (
+              <div className="mb-4 p-3 bg-accent/10 rounded">
+                <p className="text-sm text-secondary">Customer</p>
+                <p className="font-medium text-foreground">{paymentCustomer.customer_name}</p>
+                <p className="text-sm text-warning mt-2">Outstanding Balance: {formatCurrency(paymentCustomer.balance_due)}</p>
+              </div>
+            )}
+            <form onSubmit={handlePaymentSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="payment-amount">Payment Amount (₹)</Label>
+                <Input
+                  id="payment-amount"
+                  type="number"
+                  step="0.01"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="payment-date">Payment Date</Label>
+                <Input
+                  id="payment-date"
+                  type="date"
+                  value={paymentForm.date}
+                  onChange={(e) => setPaymentForm({...paymentForm, date: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="payment-notes">Notes (optional)</Label>
+                <Textarea
+                  id="payment-notes"
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
+                  placeholder="Payment method, reference number, etc."
+                />
+              </div>
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="btn-primary">
+                  Record Payment
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Recent Sales */}
         <section className="animate-fade-in">
