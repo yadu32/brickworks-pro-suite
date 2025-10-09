@@ -48,7 +48,8 @@ const SalesModule = () => {
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [customerSales, setCustomerSales] = useState<Sale[]>([]);
-  const [periodFilter, setPeriodFilter] = useState<'today' | 'week' | 'month'>('week');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDuesOnly, setShowDuesOnly] = useState(false);
   const { toast } = useToast();
 
   const [saleForm, setSaleForm] = useState({
@@ -370,38 +371,24 @@ const SalesModule = () => {
     }
   };
 
-  const getFilteredSales = () => {
-    const now = new Date();
-    const startOfToday = new Date(now.setHours(0, 0, 0, 0));
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Monday
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    return sales.filter(sale => {
-      const saleDate = new Date(sale.date);
-      if (periodFilter === 'today') return saleDate >= startOfToday;
-      if (periodFilter === 'week') return saleDate >= startOfWeek;
-      if (periodFilter === 'month') return saleDate >= startOfMonth;
-      return true;
-    });
-  };
-
-  const getPeriodAnalytics = () => {
-    const filteredSales = getFilteredSales();
-    const totalRevenue = filteredSales.reduce((sum, s) => sum + s.total_amount, 0);
-    const totalReceived = filteredSales.reduce((sum, s) => sum + s.amount_received, 0);
-    const outstandingBalance = filteredSales.reduce((sum, s) => sum + s.balance_due, 0);
-    const averageSaleValue = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
-    const paymentCollectionRate = totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 0;
-
-    return {
-      totalRevenue,
-      totalReceived,
-      outstandingBalance,
-      averageSaleValue,
-      paymentCollectionRate,
-      salesCount: filteredSales.length
-    };
+  const getFilteredCustomers = () => {
+    let filtered = customers;
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.customer_name.toLowerCase().includes(query) ||
+        (c.customer_phone && c.customer_phone.toLowerCase().includes(query))
+      );
+    }
+    
+    // Apply dues filter
+    if (showDuesOnly) {
+      filtered = filtered.filter(c => c.balance_due > 0);
+    }
+    
+    return filtered;
   };
 
   useEffect(() => {
@@ -585,14 +572,13 @@ const SalesModule = () => {
     );
   }
 
-  const analytics = getPeriodAnalytics();
-
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-foreground">Sales Management</h1>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-foreground">Sales Management</h1>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="btn-primary">
                 <Plus className="h-4 w-4 mr-2" />
@@ -719,108 +705,6 @@ const SalesModule = () => {
           </Dialog>
         </div>
 
-        {/* Sales Analytics Dashboard */}
-        <section className="animate-fade-in">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-foreground">Sales Analytics</h2>
-            <div className="flex gap-2">
-              <Button 
-                variant={periodFilter === 'today' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPeriodFilter('today')}
-              >
-                Today
-              </Button>
-              <Button 
-                variant={periodFilter === 'week' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPeriodFilter('week')}
-              >
-                This Week
-              </Button>
-              <Button 
-                variant={periodFilter === 'month' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPeriodFilter('month')}
-              >
-                This Month
-              </Button>
-            </div>
-          </div>
-
-          {/* Analytics Cards Row 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="card-metric">
-              <div className="text-center">
-                <IndianRupee className="h-8 w-8 text-primary mx-auto mb-2" />
-                <p className="text-secondary">Period Revenue</p>
-                <p className="text-2xl font-bold text-primary">
-                  {formatCurrency(analytics.totalRevenue)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {analytics.salesCount} sales
-                </p>
-              </div>
-            </div>
-            <div className="card-metric">
-              <div className="text-center">
-                <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
-                <p className="text-secondary">Avg Sale Value</p>
-                <p className="text-2xl font-bold text-success">
-                  {formatCurrency(analytics.averageSaleValue)}
-                </p>
-              </div>
-            </div>
-            <div className="card-metric">
-              <div className="text-center">
-                <IndianRupee className="h-8 w-8 text-warning mx-auto mb-2" />
-                <p className="text-secondary">Outstanding Balance</p>
-                <p className="text-2xl font-bold text-warning">
-                  {formatCurrency(analytics.outstandingBalance)}
-                </p>
-              </div>
-            </div>
-            <div className="card-metric">
-              <div className="text-center">
-                <ShoppingCart className="h-8 w-8 text-secondary mx-auto mb-2" />
-                <p className="text-secondary">Collection Rate</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {analytics.paymentCollectionRate.toFixed(1)}%
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatCurrency(analytics.totalReceived)} received
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Customers in Period */}
-          <div className="card-dark p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Top 5 Customers</h3>
-            <div className="space-y-3">
-              {customers.slice(0, 5).map((customer, index) => (
-                <div key={customer.customer_name} className="flex items-center justify-between p-3 bg-accent/5 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{customer.customer_name}</p>
-                      <p className="text-xs text-secondary">{customer.transaction_count} transactions</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-success">{formatCurrency(customer.total_sales)}</p>
-                    {customer.balance_due > 0 && (
-                      <p className="text-xs text-warning">Due: {formatCurrency(customer.balance_due)}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Overall Summary */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Overall Summary</h2>
@@ -829,26 +713,24 @@ const SalesModule = () => {
               <div className="text-center">
                 <ShoppingCart className="h-8 w-8 text-primary mx-auto mb-2" />
                 <p className="text-secondary">Total Sales</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {formatCurrency(sales.reduce((sum, sale) => sum + sale.total_amount, 0))}
-                </p>
+                <p className="text-2xl font-bold text-foreground">{sales.length}</p>
               </div>
             </div>
             <div className="card-metric">
               <div className="text-center">
                 <IndianRupee className="h-8 w-8 text-success mx-auto mb-2" />
-                <p className="text-secondary">Amount Received</p>
+                <p className="text-secondary">Revenue</p>
                 <p className="text-2xl font-bold text-success">
-                  {formatCurrency(sales.reduce((sum, sale) => sum + sale.amount_received, 0))}
+                  {formatCurrency(sales.reduce((sum, s) => sum + s.total_amount, 0))}
                 </p>
               </div>
             </div>
             <div className="card-metric">
               <div className="text-center">
-                <IndianRupee className="h-8 w-8 text-warning mx-auto mb-2" />
-                <p className="text-secondary">Outstanding</p>
+                <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-secondary">Balance Due</p>
                 <p className="text-2xl font-bold text-warning">
-                  {formatCurrency(sales.reduce((sum, sale) => sum + sale.balance_due, 0))}
+                  {formatCurrency(sales.reduce((sum, s) => sum + s.balance_due, 0))}
                 </p>
               </div>
             </div>

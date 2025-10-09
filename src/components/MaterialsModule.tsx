@@ -556,25 +556,25 @@ const MaterialsModule = () => {
           </div>
         </section>
 
-        {/* Recent Purchases */}
+        {/* Recent Purchases with Scrollable Table */}
         <section className="animate-slide-up">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Recent Purchases</h2>
           <div className="card-dark">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-secondary">Date</th>
-                    <th className="text-left py-3 px-4 text-secondary">Material</th>
-                    <th className="text-left py-3 px-4 text-secondary">Quantity</th>
-                    <th className="text-left py-3 px-4 text-secondary">Supplier</th>
-                    <th className="text-left py-3 px-4 text-secondary">Total Cost</th>
-                    <th className="text-left py-3 px-4 text-secondary">Balance</th>
-                    <th className="text-left py-3 px-4 text-secondary">Actions</th>
+                <thead className="sticky top-0 bg-card z-10 border-b-2 border-border">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Date</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Material</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Quantity</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Supplier</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Total Cost</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Balance</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {purchases.slice(0, 10).map((purchase) => (
+                  {purchases.map((purchase) => (
                     <tr key={purchase.id} className="border-b border-border hover:bg-accent/5">
                       <td className="py-3 px-4 text-foreground">
                         <div className="flex items-center">
@@ -634,23 +634,23 @@ const MaterialsModule = () => {
           </div>
         </section>
 
-        {/* Recent Usage */}
+        {/* Recent Usage with Scrollable Table */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Recent Usage</h2>
           <div className="card-dark">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-secondary">Date</th>
-                    <th className="text-left py-3 px-4 text-secondary">Material</th>
-                    <th className="text-left py-3 px-4 text-secondary">Quantity Used</th>
-                    <th className="text-left py-3 px-4 text-secondary">Purpose</th>
-                    <th className="text-left py-3 px-4 text-secondary">Actions</th>
+                <thead className="sticky top-0 bg-card z-10 border-b-2 border-border">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Date</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Material</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Quantity Used</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Purpose</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usage.slice(0, 10).map((usageItem) => (
+                  {usage.map((usageItem) => (
                     <tr key={usageItem.id} className="border-b border-border hover:bg-accent/5">
                       <td className="py-3 px-4 text-foreground">
                         <div className="flex items-center">
