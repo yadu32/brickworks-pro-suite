@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -173,6 +174,11 @@ const PaymentsModule = () => {
     toast({ title: editingPayment ? 'Payment updated successfully' : 'Payment added successfully' });
   };
 
+  const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
+    open: false,
+    id: ''
+  });
+
   const deletePayment = async (id: string) => {
     const { error } = await supabase
       .from('employee_payments')
@@ -185,6 +191,7 @@ const PaymentsModule = () => {
       await loadPayments();
       toast({ title: 'Payment deleted successfully' });
     }
+    setDeleteDialogState({open: false, id: ''});
   };
 
   const editPayment = (payment: EmployeePayment) => {
@@ -632,7 +639,7 @@ const PaymentsModule = () => {
                           <Button 
                             size="sm" 
                             variant="destructive"
-                            onClick={() => deletePayment(payment.id)}
+                            onClick={() => setDeleteDialogState({open: true, id: payment.id})}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -645,6 +652,22 @@ const PaymentsModule = () => {
             </div>
           </div>
         </section>
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => setDeleteDialogState({...deleteDialogState, open})}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this payment record.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deletePayment(deleteDialogState.id)}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

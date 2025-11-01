@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
@@ -106,9 +107,12 @@ const OtherExpensesModule = () => {
     setLoading(false);
   };
 
-  const deleteExpense = async (id: string) => {
-    if (!confirm('Delete this expense?')) return;
+  const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
+    open: false,
+    id: ''
+  });
 
+  const deleteExpense = async (id: string) => {
     const { error } = await supabase.from('other_expenses').delete().eq('id', id);
     
     if (error) {
@@ -117,6 +121,7 @@ const OtherExpensesModule = () => {
       toast({ title: 'Success', description: 'Expense deleted' });
       loadExpenses();
     }
+    setDeleteDialogState({open: false, id: ''});
   };
 
   const getTotalByType = () => {
@@ -308,7 +313,7 @@ const OtherExpensesModule = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => deleteExpense(expense.id)}
+                      onClick={() => setDeleteDialogState({open: true, id: expense.id})}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -319,6 +324,22 @@ const OtherExpensesModule = () => {
           </Table>
         </div>
       </Card>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => setDeleteDialogState({...deleteDialogState, open})}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this expense record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteExpense(deleteDialogState.id)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

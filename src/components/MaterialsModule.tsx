@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -268,6 +269,13 @@ const MaterialsModule = () => {
     toast({ title: editingUsage ? 'Usage updated successfully' : 'Usage added successfully' });
   };
 
+  const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string, materialId: string, type: 'purchase' | 'usage'}>({
+    open: false,
+    id: '',
+    materialId: '',
+    type: 'purchase'
+  });
+
   const deletePurchase = async (id: string, materialId: string) => {
     const { error } = await supabase
       .from('material_purchases')
@@ -282,6 +290,7 @@ const MaterialsModule = () => {
       await loadMaterials();
       toast({ title: 'Purchase deleted successfully' });
     }
+    setDeleteDialogState({open: false, id: '', materialId: '', type: 'purchase'});
   };
 
   const deleteUsage = async (id: string, materialId: string) => {
@@ -298,6 +307,7 @@ const MaterialsModule = () => {
       await loadMaterials();
       toast({ title: 'Usage deleted successfully' });
     }
+    setDeleteDialogState({open: false, id: '', materialId: '', type: 'usage'});
   };
 
   const editPurchase = (purchase: MaterialPurchase) => {
@@ -335,7 +345,7 @@ const MaterialsModule = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
+        <div className="space-y-4">
           <h1 className="text-3xl font-bold text-foreground">Materials Management</h1>
           <div className="flex gap-4">
             <Dialog open={isPurchaseDialogOpen} onOpenChange={setIsPurchaseDialogOpen}>
@@ -528,6 +538,28 @@ const MaterialsModule = () => {
             </Dialog>
           </div>
         </div>
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => setDeleteDialogState({...deleteDialogState, open})}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this {deleteDialogState.type} record.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (deleteDialogState.type === 'purchase') {
+                  deletePurchase(deleteDialogState.id, deleteDialogState.materialId);
+                } else {
+                  deleteUsage(deleteDialogState.id, deleteDialogState.materialId);
+                }
+              }}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Material Stock Overview */}
         <section className="animate-fade-in">
@@ -565,8 +597,7 @@ const MaterialsModule = () => {
                 <thead className="sticky top-0 bg-card z-10 border-b-2 border-border">
                   <tr>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Date</th>
-                    <th className="text-left py-3 px-4 text-secondary bg-card">Material</th>
-                    <th className="text-left py-3 px-4 text-secondary bg-card">Quantity</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Material & Qty</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Supplier</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Total Cost</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Balance</th>
@@ -583,10 +614,10 @@ const MaterialsModule = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">
-                        {purchase.materials.material_name}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {purchase.quantity_purchased} {purchase.materials.unit}
+                        <div>
+                          <p className="font-medium">{purchase.materials.material_name}</p>
+                          <p className="text-sm text-secondary">{purchase.quantity_purchased} {purchase.materials.unit}</p>
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">
                         <div>
@@ -620,7 +651,7 @@ const MaterialsModule = () => {
                           <Button 
                             size="sm" 
                             variant="destructive"
-                            onClick={() => deletePurchase(purchase.id, purchase.material_id)}
+                            onClick={() => setDeleteDialogState({open: true, id: purchase.id, materialId: purchase.material_id, type: 'purchase'})}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -643,8 +674,7 @@ const MaterialsModule = () => {
                 <thead className="sticky top-0 bg-card z-10 border-b-2 border-border">
                   <tr>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Date</th>
-                    <th className="text-left py-3 px-4 text-secondary bg-card">Material</th>
-                    <th className="text-left py-3 px-4 text-secondary bg-card">Quantity Used</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Material & Qty</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Purpose</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Actions</th>
                   </tr>
@@ -659,10 +689,10 @@ const MaterialsModule = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">
-                        {usageItem.materials.material_name}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {usageItem.quantity_used} {usageItem.materials.unit}
+                        <div>
+                          <p className="font-medium">{usageItem.materials.material_name}</p>
+                          <p className="text-sm text-secondary">{usageItem.quantity_used} {usageItem.materials.unit}</p>
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">
                         {usageItem.purpose}
@@ -679,7 +709,7 @@ const MaterialsModule = () => {
                           <Button 
                             size="sm" 
                             variant="destructive"
-                            onClick={() => deleteUsage(usageItem.id, usageItem.material_id)}
+                            onClick={() => setDeleteDialogState({open: true, id: usageItem.id, materialId: usageItem.material_id, type: 'usage'})}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

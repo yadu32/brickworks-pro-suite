@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Share2, Mail, Search, X, DollarSign } from 'lucide-react';
+import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Mail, Search, X, DollarSign } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -312,6 +314,11 @@ const SalesModule = () => {
     toast({ title: editingSale ? 'Sale updated successfully' : 'Sale added successfully' });
   };
 
+  const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
+    open: false,
+    id: ''
+  });
+
   const deleteSale = async (id: string) => {
     const { error } = await supabase
       .from('sales')
@@ -324,6 +331,7 @@ const SalesModule = () => {
       await loadSales();
       toast({ title: 'Sale deleted successfully' });
     }
+    setDeleteDialogState({open: false, id: ''});
   };
 
   const editSale = (sale: Sale) => {
@@ -796,39 +804,37 @@ const SalesModule = () => {
 
         {/* Customers Table with Search and Filter */}
         <section className="animate-slide-up">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-foreground">Customers</h2>
-            <div className="flex gap-3 items-center">
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
-                <Input
-                  type="text"
-                  placeholder="Search customers by name or phone..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-10 w-80"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Due Filter Toggle */}
-              <Button
-                variant={showDuesOnly ? "default" : "outline"}
-                onClick={() => setShowDuesOnly(!showDuesOnly)}
-                className={showDuesOnly ? "btn-primary" : ""}
-              >
-                <DollarSign className="h-4 w-4 mr-2" />
-                {showDuesOnly ? 'Show All' : 'Due Only'}
-              </Button>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Customers</h2>
+          <div className="flex gap-3 items-center mb-4">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
+              <Input
+                type="text"
+                placeholder="Search customers by name or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
+            
+            {/* Due Filter Toggle */}
+            <Button
+              variant={showDuesOnly ? "default" : "outline"}
+              onClick={() => setShowDuesOnly(!showDuesOnly)}
+              className={showDuesOnly ? "btn-primary" : ""}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              {showDuesOnly ? 'Show All' : 'Due Only'}
+            </Button>
           </div>
           
           {/* Filter Results Info */}
@@ -976,112 +982,118 @@ const SalesModule = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Recent Sales */}
+        {/* Sales */}
         <section className="animate-fade-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Recent Sales</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Sales</h2>
           <div className="card-dark">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-secondary">Date</th>
-                    <th className="text-left py-3 px-4 text-secondary">Customer</th>
-                    <th className="text-left py-3 px-4 text-secondary">Brick Type</th>
-                    <th className="text-left py-3 px-4 text-secondary">Quantity</th>
-                    <th className="text-left py-3 px-4 text-secondary">Total Amount</th>
-                    <th className="text-left py-3 px-4 text-secondary">Balance Due</th>
-                    <th className="text-left py-3 px-4 text-secondary">Status</th>
-                    <th className="text-left py-3 px-4 text-secondary">Actions</th>
+                <thead className="sticky top-0 bg-card z-10 border-b-2 border-border">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Date</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Customer</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Brick & Qty</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Total Amount</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Balance Due</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sales.slice(0, 10).map((sale) => {
-                    const paymentStatus = getPaymentStatus(sale);
-                    return (
-                      <tr key={sale.id} className="border-b border-border hover:bg-accent/5">
-                        <td className="py-3 px-4 text-foreground">
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-2 text-secondary" />
-                            {new Date(sale.date).toLocaleDateString('en-IN')}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-foreground">
-                          <div>
-                            <p className="font-medium">{sale.customer_name}</p>
-                            {sale.customer_phone && (
-                              <p className="text-sm text-secondary">{sale.customer_phone}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-foreground">
-                          {sale.brick_types.type_name}
-                        </td>
-                        <td className="py-3 px-4 text-foreground">
-                          {sale.quantity_sold.toLocaleString()} {sale.brick_types.unit}
-                        </td>
-                        <td className="py-3 px-4 text-foreground">
-                          {formatCurrency(sale.total_amount)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`${sale.balance_due > 0 ? 'text-warning' : 'text-success'}`}>
-                            {formatCurrency(sale.balance_due)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`text-sm px-2 py-1 rounded bg-${paymentStatus.color}/20 text-${paymentStatus.color}`}>
-                            {paymentStatus.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleShareInvoice(sale, 'download')}
-                              title="Download PDF"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleShareInvoice(sale, 'whatsapp')}
-                              title="Share via WhatsApp"
-                            >
-                              <Share2 className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleShareInvoice(sale, 'email')}
-                              title="Share via Email"
-                            >
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => editSale(sale)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => deleteSale(sale.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {sales.map((sale) => (
+                    <tr key={sale.id} className="border-b border-border hover:bg-accent/5">
+                      <td className="py-3 px-4 text-foreground">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-secondary" />
+                          {new Date(sale.date).toLocaleDateString('en-IN')}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-foreground">
+                        <div>
+                          <p className="font-medium">{sale.customer_name}</p>
+                          {sale.customer_phone && (
+                            <p className="text-sm text-secondary">{sale.customer_phone}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-foreground">
+                        <div>
+                          <p className="font-medium">{sale.brick_types.type_name}</p>
+                          <p className="text-sm text-secondary">{sale.quantity_sold.toLocaleString()} {sale.brick_types.unit}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-foreground">
+                        {formatCurrency(sale.total_amount)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`${sale.balance_due > 0 ? 'text-warning' : 'text-success'}`}>
+                          {formatCurrency(sale.balance_due)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleShareInvoice(sale, 'download')}
+                            title="Download PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleShareInvoice(sale, 'whatsapp')}
+                            title="Share via WhatsApp"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleShareInvoice(sale, 'email')}
+                            title="Share via Email"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => editSale(sale)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => setDeleteDialogState({open: true, id: sale.id})}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         </section>
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => setDeleteDialogState({...deleteDialogState, open})}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this sale record.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deleteSale(deleteDialogState.id)}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

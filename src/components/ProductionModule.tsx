@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -158,6 +159,11 @@ const ProductionModule = () => {
     setIsDialogOpen(true);
   };
 
+  const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
+    open: false,
+    id: ''
+  });
+
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase.from('bricks_production').delete().eq('id', id);
@@ -169,6 +175,7 @@ const ProductionModule = () => {
       console.error('Error deleting production record:', error);
       toast({ title: "Error", description: "Failed to delete production record", variant: "destructive" });
     }
+    setDeleteDialogState({open: false, id: ''});
   };
 
   const expectedBricks = formData.number_of_punches && formData.brick_type_id ? 
@@ -380,7 +387,7 @@ const ProductionModule = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDelete(record.id)}
+                        onClick={() => setDeleteDialogState({open: true, id: record.id})}
                         className="hover:bg-destructive/20 text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -392,6 +399,22 @@ const ProductionModule = () => {
             )}
           </div>
         </section>
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => setDeleteDialogState({...deleteDialogState, open})}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this production record.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleDelete(deleteDialogState.id)}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

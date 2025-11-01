@@ -306,24 +306,26 @@ const ReportsModule = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-4 items-end">
-                <div>
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={dateRange.startDate}
-                    onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={dateRange.endDate}
-                    onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
-                  />
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div>
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={dateRange.startDate}
+                      onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">End Date</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={dateRange.endDate}
+                      onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                    />
+                  </div>
                 </div>
                 <Button onClick={generateReport} disabled={loading} className="btn-primary">
                   <FileText className="h-4 w-4 mr-2" />
