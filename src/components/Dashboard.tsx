@@ -154,35 +154,7 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto p-6 space-y-8">
-        {/* Today's Production */}
-        <section className="animate-fade-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Today's Production</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card-metric">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-secondary">4-inch Bricks</p>
-                  <p className="text-metric">{dashboardData.todayProduction.fourInch.toLocaleString()}</p>
-                  <p className="text-secondary">pieces produced</p>
-                </div>
-                <Factory className="h-12 w-12 text-primary" />
-              </div>
-            </div>
-            
-            <div className="card-metric">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-secondary">6-inch Bricks</p>
-                  <p className="text-metric">{dashboardData.todayProduction.sixInch.toLocaleString()}</p>
-                  <p className="text-secondary">pieces produced</p>
-                </div>
-                <Factory className="h-12 w-12 text-success" />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Monthly Production & Current Stock */}
+        {/* Production & Inventory */}
         <section className="animate-slide-up">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Production & Inventory</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -220,14 +192,14 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Sales Performance */}
+        {/* Sales Summary */}
         <section className="animate-fade-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Performance</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="card-metric">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-secondary">Today's Revenue</p>
+                  <p className="text-secondary">Today's Total Sales</p>
                   <p className="text-metric text-success">{formatCurrency(dashboardData.salesMetrics.todayRevenue)}</p>
                 </div>
                 <IndianRupee className="h-12 w-12 text-success" />
@@ -237,7 +209,7 @@ const Dashboard = () => {
             <div className="card-metric">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-secondary">Monthly Revenue</p>
+                  <p className="text-secondary">Monthly Total Sales</p>
                   <p className="text-metric text-success">{formatCurrency(dashboardData.salesMetrics.monthlyRevenue)}</p>
                 </div>
                 <TrendingUp className="h-12 w-12 text-success" />
@@ -315,14 +287,14 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Quick Actions */}
+        {/* New Entry */}
         <section className="animate-scale-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Quick Actions</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">New Entry</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <QuickActionButton icon={Factory} label="Add Production" action="production" />
-            <QuickActionButton icon={ShoppingCart} label="Record Sale" action="sales" />
-            <QuickActionButton icon={Package} label="Material Purchase" action="materials" />
-            <QuickActionButton icon={CreditCard} label="Employee Payment" action="payments" />
+            <QuickActionButton icon={Factory} label="Production" action="production" />
+            <QuickActionButton icon={ShoppingCart} label="Sale" action="sales" />
+            <QuickActionButton icon={Package} label="Material" action="materials" />
+            <QuickActionButton icon={CreditCard} label="Payment" action="payments" />
           </div>
         </section>
       </div>

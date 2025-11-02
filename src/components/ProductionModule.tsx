@@ -205,7 +205,7 @@ const ProductionModule = () => {
             <DialogContent className="card-dark max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-foreground">
-                  {editingRecord ? 'Edit Production Record' : 'Add Production Record'}
+                  {editingRecord ? 'Edit Production Entry' : 'New Production Entry'}
                 </DialogTitle>
               </DialogHeader>
               
@@ -250,7 +250,7 @@ const ProductionModule = () => {
                     required
                   />
                   {expectedBricks > 0 && (
-                    <p className="text-secondary mt-1">Expected: {expectedBricks} bricks</p>
+                    <p className="text-secondary mt-1">Expected Bricks: {expectedBricks}</p>
                   )}
                 </div>
 
@@ -265,8 +265,11 @@ const ProductionModule = () => {
                     required
                   />
                   {formData.actual_bricks_produced && expectedBricks > 0 && (
-                    <p className="text-secondary mt-1">
-                      Efficiency: {calculateEfficiency(parseInt(formData.actual_bricks_produced), expectedBricks).toFixed(1)}%
+                    <p className={`mt-1 font-medium ${
+                      calculateEfficiency(parseInt(formData.actual_bricks_produced), expectedBricks) >= 95 ? 'text-success' :
+                      calculateEfficiency(parseInt(formData.actual_bricks_produced), expectedBricks) >= 85 ? 'text-warning' : 'text-destructive'
+                    }`}>
+                      Efficiency %: {calculateEfficiency(parseInt(formData.actual_bricks_produced), expectedBricks).toFixed(1)}%
                     </p>
                   )}
                 </div>

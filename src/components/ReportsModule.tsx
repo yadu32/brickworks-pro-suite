@@ -302,7 +302,7 @@ const ReportsModule = () => {
             <CardHeader>
               <CardTitle className="text-foreground flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
-                Select Report Period
+                Choose Dates
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -327,9 +327,9 @@ const ReportsModule = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={generateReport} disabled={loading} className="btn-primary">
+                <Button onClick={generateReport} disabled={loading} className="btn-primary w-full md:w-auto">
                   <FileText className="h-4 w-4 mr-2" />
-                  {loading ? 'Generating...' : 'Generate Report'}
+                  {loading ? 'Generating...' : 'Show Report'}
                 </Button>
               </div>
             </CardContent>
@@ -440,7 +440,7 @@ const ReportsModule = () => {
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center">
                     <Package className="h-5 w-5 mr-2" />
-                    Materials Consumption & Costs
+                    Materials Used & Costs
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -541,7 +541,7 @@ const ReportsModule = () => {
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center">
                     <DollarSign className="h-5 w-5 mr-2" />
-                    Cost of Goods Sold (COGS) Breakdown
+                    Production Costs
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -625,13 +625,13 @@ const ReportsModule = () => {
               </Card>
             </section>
 
-            {/* Financial Overview */}
+            {/* Profit/Loss Summary */}
             <section className="animate-fade-in">
               <Card className="card-metric">
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center">
                     <DollarSign className="h-5 w-5 mr-2" />
-                    Financial Overview
+                    Profit/Loss Summary
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

@@ -688,12 +688,14 @@ const SalesModule = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="customerPhone">Customer Phone</Label>
-                    <Input
-                      id="customerPhone"
-                      value={saleForm.customer_phone}
-                      onChange={(e) => setSaleForm({...saleForm, customer_phone: e.target.value})}
-                    />
+                  <Label htmlFor="customerPhone">Customer Phone</Label>
+                  <Input
+                    id="customerPhone"
+                    value={saleForm.customer_phone}
+                    onChange={(e) => setSaleForm({...saleForm, customer_phone: e.target.value})}
+                    readOnly={!!saleForm.customer_name}
+                    className={saleForm.customer_name ? "bg-muted" : ""}
+                  />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -777,7 +779,7 @@ const SalesModule = () => {
             <div className="card-metric">
               <div className="text-center">
                 <IndianRupee className="h-8 w-8 text-success mx-auto mb-2" />
-                <p className="text-secondary">Revenue</p>
+                <p className="text-secondary">Total Sales</p>
                 <p className="text-2xl font-bold text-success">
                   {formatCurrency(sales.reduce((sum, s) => sum + s.total_amount, 0))}
                 </p>
@@ -876,10 +878,17 @@ const SalesModule = () => {
                         </td>
                         <td className="py-3 px-4 text-foreground">
                           {customer.customer_phone && (
-                            <div className="flex items-center">
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Call ${customer.customer_phone}?`)) {
+                                  window.location.href = `tel:${customer.customer_phone}`;
+                                }
+                              }}
+                              className="flex items-center hover:text-primary cursor-pointer"
+                            >
                               <Phone className="h-4 w-4 mr-2 text-secondary" />
                               {customer.customer_phone}
-                            </div>
+                            </button>
                           )}
                         </td>
                         <td className="py-3 px-4 text-foreground">
@@ -1044,8 +1053,9 @@ const SalesModule = () => {
                             variant="outline"
                             onClick={() => handleShareInvoice(sale, 'whatsapp')}
                             title="Share via WhatsApp"
+                            className="text-green-600 hover:text-green-700"
                           >
-                            <MessageCircle className="h-4 w-4" />
+                            <MessageCircle className="h-4 w-4 fill-current" />
                           </Button>
                           <Button 
                             size="sm" 
