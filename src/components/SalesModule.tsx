@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateInvoicePDF, shareViaWhatsApp, shareViaEmail, downloadPDF } from '@/utils/invoiceGenerator';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { AddCustomerDialog } from '@/components/AddCustomerDialog';
 
 interface BrickType {
   id: string;
@@ -55,6 +57,8 @@ const SalesModule = () => {
   const [showDuesOnly, setShowDuesOnly] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentCustomer, setPaymentCustomer] = useState<CustomerSummary | null>(null);
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [customerOptions, setCustomerOptions] = useState<Array<{ value: string; label: string; phone: string }>>([]);
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     date: new Date().toISOString().split('T')[0],
@@ -452,6 +456,7 @@ const SalesModule = () => {
   useEffect(() => {
     loadBrickTypes();
     loadSales();
+    loadCustomers();
   }, []);
 
   if (selectedCustomer) {
@@ -762,8 +767,17 @@ const SalesModule = () => {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
-        </div>
+        </Dialog>
+
+        <AddCustomerDialog
+          open={isAddCustomerOpen}
+          onOpenChange={setIsAddCustomerOpen}
+          onCustomerAdded={(name, phone) => {
+            setSaleForm({ ...saleForm, customer_name: name, customer_phone: phone });
+            loadCustomers();
+          }}
+        />
+      </div>
 
         {/* Overall Summary */}
         <section className="animate-fade-in">

@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { AddEmployeeDialog } from '@/components/AddEmployeeDialog';
 
 interface EmployeePayment {
   id: string;
@@ -37,6 +39,8 @@ const PaymentsModule = () => {
     start: '',
     end: ''
   });
+  const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
+  const [employeeOptions, setEmployeeOptions] = useState<Array<{ value: string; label: string }>>([]);
   const { toast } = useToast();
 
   // Auto-calculated wages
@@ -112,6 +116,31 @@ const PaymentsModule = () => {
     });
     
     setEmployees(Array.from(employeeMap.values()).sort((a, b) => b.total_amount - a.total_amount));
+  };
+
+  const loadEmployeeNames = async () => {
+    const { data, error } = await supabase
+      .from('employee_payments')
+      .select('employee_name')
+      .order('employee_name');
+    
+    if (error) {
+      console.error('Error loading employees', error);
+    } else {
+      const uniqueEmployees = new Set<string>();
+      data?.forEach(payment => {
+        if (payment.employee_name) {
+          uniqueEmployees.add(payment.employee_name);
+        }
+      });
+      
+      const options = Array.from(uniqueEmployees).map(name => ({
+        value: name,
+        label: name
+      }));
+      
+      setEmployeeOptions(options);
+    }
   };
 
   const loadEmployeePayments = async (employeeName: string) => {
@@ -239,6 +268,7 @@ const PaymentsModule = () => {
 
   useEffect(() => {
     loadPayments();
+    loadEmployeeNames();
     calculateAutoWages();
   }, [dateFilter]);
 
@@ -426,11 +456,14 @@ const PaymentsModule = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="employeeName">Employee Name</Label>
-                    <Input
-                      id="employeeName"
+                    <SearchableSelect
                       value={paymentForm.employee_name}
-                      onChange={(e) => setPaymentForm({...paymentForm, employee_name: e.target.value})}
-                      required
+                      onValueChange={(value) => setPaymentForm({ ...paymentForm, employee_name: value })}
+                      options={employeeOptions}
+                      placeholder="Select employee..."
+                      searchPlaceholder="Search employees..."
+                      onAddNew={() => setIsAddEmployeeOpen(true)}
+                      addNewLabel="Add New Employee"
                     />
                   </div>
                   <div>
@@ -465,6 +498,15 @@ const PaymentsModule = () => {
               </form>
             </DialogContent>
           </Dialog>
+
+          <AddEmployeeDialog
+            open={isAddEmployeeOpen}
+            onOpenChange={setIsAddEmployeeOpen}
+            onEmployeeAdded={(name) => {
+              setPaymentForm({ ...paymentForm, employee_name: name });
+              loadEmployeeNames();
+            }}
+          />
         </div>
 
         {/* Date Filter */}
