@@ -152,6 +152,27 @@ const SalesModule = () => {
     setCustomers(Array.from(customerMap.values()).sort((a, b) => b.total_sales - a.total_sales));
   };
 
+  const loadCustomers = () => {
+    // Build customer options from existing sales data
+    const uniqueCustomers = new Map<string, { name: string; phone: string }>();
+    sales.forEach(sale => {
+      if (!uniqueCustomers.has(sale.customer_name)) {
+        uniqueCustomers.set(sale.customer_name, {
+          name: sale.customer_name,
+          phone: sale.customer_phone || ''
+        });
+      }
+    });
+    
+    const options = Array.from(uniqueCustomers.values()).map(c => ({
+      value: c.name,
+      label: c.name,
+      phone: c.phone
+    }));
+    
+    setCustomerOptions(options);
+  };
+
   const loadCustomerSales = async (customerName: string) => {
     const { data, error } = await supabase
       .from('sales')
@@ -456,8 +477,11 @@ const SalesModule = () => {
   useEffect(() => {
     loadBrickTypes();
     loadSales();
-    loadCustomers();
   }, []);
+
+  useEffect(() => {
+    loadCustomers();
+  }, [sales]);
 
   if (selectedCustomer) {
     const customer = customers.find(c => c.customer_name === selectedCustomer);
@@ -774,7 +798,7 @@ const SalesModule = () => {
           onOpenChange={setIsAddCustomerOpen}
           onCustomerAdded={(name, phone) => {
             setSaleForm({ ...saleForm, customer_name: name, customer_phone: phone });
-            loadCustomers();
+            // loadCustomers will be called automatically via useEffect when sales changes
           }}
         />
       </div>
