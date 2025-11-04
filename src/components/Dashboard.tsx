@@ -155,32 +155,26 @@ const Dashboard = () => {
         {/* Production & Inventory */}
         <section className="animate-slide-up">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Production & Inventory</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="card-metric">
+          <div className="card-metric">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="text-center">
                 <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
                 <p className="text-secondary">Monthly 4-inch</p>
                 <p className="text-2xl font-bold text-foreground">{dashboardData.monthlyProduction.fourInch.toLocaleString()}</p>
               </div>
-            </div>
-            
-            <div className="card-metric">
+              
               <div className="text-center">
                 <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
                 <p className="text-secondary">Monthly 6-inch</p>
                 <p className="text-2xl font-bold text-foreground">{dashboardData.monthlyProduction.sixInch.toLocaleString()}</p>
               </div>
-            </div>
-            
-            <div className="card-metric">
+              
               <div className="text-center">
                 <Package className="h-8 w-8 text-warning mx-auto mb-2" />
                 <p className="text-secondary">4-inch Stock</p>
                 <p className="text-2xl font-bold text-foreground">{dashboardData.currentStock.fourInch.toLocaleString()}</p>
               </div>
-            </div>
-            
-            <div className="card-metric">
+              
               <div className="text-center">
                 <Package className="h-8 w-8 text-warning mx-auto mb-2" />
                 <p className="text-secondary">6-inch Stock</p>
