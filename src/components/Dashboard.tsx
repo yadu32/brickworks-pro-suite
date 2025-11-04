@@ -2,21 +2,18 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Package, Users, IndianRupee, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import heroFactory from '@/assets/hero-factory.jpg';
+import { QuickEntryDialogs } from '@/components/QuickEntryDialogs';
 
 interface QuickActionButtonProps {
   icon: LucideIcon;
   label: string;
-  action: string;
+  action: 'sale' | 'production' | 'usage' | 'payment';
+  onClick: () => void;
 }
 
-const QuickActionButton = ({ icon: Icon, label, action }: QuickActionButtonProps) => {
-  const handleClick = () => {
-    // Dispatch custom event to change tab
-    window.dispatchEvent(new CustomEvent('changeTab', { detail: action }));
-  };
-
+const QuickActionButton = ({ icon: Icon, label, onClick }: QuickActionButtonProps) => {
   return (
-    <button onClick={handleClick} className="card-dark p-4 text-center hover-scale">
+    <button onClick={onClick} className="card-dark p-4 text-center hover-scale">
       <Icon className="h-8 w-8 text-primary mx-auto mb-2" />
       <p className="text-sm font-medium text-foreground">{label}</p>
     </button>
@@ -24,6 +21,7 @@ const QuickActionButton = ({ icon: Icon, label, action }: QuickActionButtonProps
 };
 
 const Dashboard = () => {
+  const [quickEntryType, setQuickEntryType] = useState<'sale' | 'production' | 'usage' | 'payment' | null>(null);
   const [dashboardData, setDashboardData] = useState({
     todayProduction: { fourInch: 0, sixInch: 0 },
     monthlyProduction: { fourInch: 0, sixInch: 0 },
@@ -195,17 +193,7 @@ const Dashboard = () => {
         {/* Sales Summary */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="card-metric">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-secondary">Today's Total Sales</p>
-                  <p className="text-metric text-success">{formatCurrency(dashboardData.salesMetrics.todayRevenue)}</p>
-                </div>
-                <IndianRupee className="h-12 w-12 text-success" />
-              </div>
-            </div>
-            
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="card-metric">
               <div className="flex items-center justify-between">
                 <div>
@@ -264,17 +252,7 @@ const Dashboard = () => {
         {/* Employee Payments Summary */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Employee Payments</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card-metric">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-secondary">Today's Payments</p>
-                  <p className="text-metric text-warning">{formatCurrency(dashboardData.recentPayments.todayTotal)}</p>
-                </div>
-                <Users className="h-12 w-12 text-warning" />
-              </div>
-            </div>
-            
+          <div className="grid grid-cols-1 gap-6">
             <div className="card-metric">
               <div className="flex items-center justify-between">
                 <div>
@@ -291,13 +269,19 @@ const Dashboard = () => {
         <section className="animate-scale-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">New Entry</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <QuickActionButton icon={Factory} label="Production" action="production" />
-            <QuickActionButton icon={ShoppingCart} label="Sale" action="sales" />
-            <QuickActionButton icon={Package} label="Material" action="materials" />
-            <QuickActionButton icon={CreditCard} label="Payment" action="payments" />
+            <QuickActionButton icon={Factory} label="Production" action="production" onClick={() => setQuickEntryType('production')} />
+            <QuickActionButton icon={ShoppingCart} label="Sale" action="sale" onClick={() => setQuickEntryType('sale')} />
+            <QuickActionButton icon={Package} label="Material" action="usage" onClick={() => setQuickEntryType('usage')} />
+            <QuickActionButton icon={CreditCard} label="Payment" action="payment" onClick={() => setQuickEntryType('payment')} />
           </div>
         </section>
       </div>
+
+      <QuickEntryDialogs
+        type={quickEntryType}
+        onClose={() => setQuickEntryType(null)}
+        onSuccess={() => loadDashboardData()}
+      />
     </div>
   );
 };

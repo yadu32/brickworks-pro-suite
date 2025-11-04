@@ -962,6 +962,19 @@ const SalesModule = () => {
                                 Pay Due
                               </Button>
                             )}
+                            {customer.customer_phone && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const message = `Hi ${customer.customer_name}, your current balance is ${formatCurrency(customer.balance_due)}. Total sales: ${formatCurrency(customer.total_sales)}`;
+                                  window.open(`https://wa.me/${customer.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+                                }}
+                                className="bg-green-600 hover:bg-green-700 text-white border-green-600"
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
