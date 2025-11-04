@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { AddSupplierDialog } from '@/components/AddSupplierDialog';
 
 interface Material {
   id: string;
@@ -56,6 +58,8 @@ const MaterialsModule = () => {
   const [isUsageDialogOpen, setIsUsageDialogOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<MaterialPurchase | null>(null);
   const [editingUsage, setEditingUsage] = useState<MaterialUsage | null>(null);
+  const [isAddSupplierDialogOpen, setIsAddSupplierDialogOpen] = useState(false);
+  const [supplierOptions, setSupplierOptions] = useState<Array<{ value: string; label: string }>>([]);
   const { toast } = useToast();
 
   const [purchaseForm, setPurchaseForm] = useState({
@@ -134,6 +138,25 @@ const MaterialsModule = () => {
       toast({ title: 'Error loading usage', description: error.message, variant: 'destructive' });
     } else {
       setUsage(data || []);
+    }
+  };
+
+  const loadSuppliers = async () => {
+    const { data } = await supabase
+      .from('material_purchases')
+      .select('supplier_name, supplier_phone')
+      .order('supplier_name');
+    
+    if (data) {
+      const uniqueSuppliers = Array.from(
+        new Map(data.map(item => [item.supplier_name, item])).values()
+      );
+      setSupplierOptions(
+        uniqueSuppliers.map(s => ({
+          value: s.supplier_name,
+          label: s.supplier_name
+        }))
+      );
     }
   };
 
@@ -340,7 +363,12 @@ const MaterialsModule = () => {
     loadMaterials();
     loadPurchases();
     loadUsage();
+    loadSuppliers();
   }, []);
+
+  useEffect(() => {
+    loadSuppliers();
+  }, [purchases]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -416,11 +444,20 @@ const MaterialsModule = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="supplier">Supplier Name</Label>
-                      <Input
-                        id="supplier"
+                      <SearchableSelect
                         value={purchaseForm.supplier_name}
-                        onChange={(e) => setPurchaseForm({...purchaseForm, supplier_name: e.target.value})}
-                        required
+                        onValueChange={(value) => {
+                          setPurchaseForm({...purchaseForm, supplier_name: value});
+                          const supplier = purchases.find(p => p.supplier_name === value);
+                          if (supplier && supplier.supplier_phone) {
+                            setPurchaseForm({...purchaseForm, supplier_name: value, supplier_phone: supplier.supplier_phone});
+                          }
+                        }}
+                        options={supplierOptions}
+                        placeholder="Select supplier"
+                        searchPlaceholder="Search suppliers..."
+                        onAddNew={() => setIsAddSupplierDialogOpen(true)}
+                        addNewLabel="Add Supplier"
                       />
                     </div>
                     <div>
@@ -723,6 +760,15 @@ const MaterialsModule = () => {
           </div>
         </section>
       </div>
+
+      <AddSupplierDialog
+        open={isAddSupplierDialogOpen}
+        onOpenChange={setIsAddSupplierDialogOpen}
+        onSupplierAdded={(supplierName, supplierPhone) => {
+          setPurchaseForm({...purchaseForm, supplier_name: supplierName, supplier_phone: supplierPhone || ''});
+          loadSuppliers();
+        }}
+      />
     </div>
   );
 };
