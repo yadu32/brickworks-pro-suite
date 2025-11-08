@@ -338,61 +338,6 @@ const ReportsModule = () => {
 
         {reportData && (
           <>
-            {/* Profit/Loss Summary - MOVED TO TOP */}
-            <section className="animate-fade-in">
-              <Card className="card-metric">
-                <CardHeader>
-                  <CardTitle className="text-foreground flex items-center">
-                    <DollarSign className="h-5 w-5 mr-2" />
-                    Profit/Loss Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Hero Net Profit */}
-                    <div className="text-center p-6 bg-muted/30 rounded-lg">
-                      <p className="text-muted-foreground text-lg mb-2">Net Profit</p>
-                      <p className={`text-5xl font-bold ${
-                        (reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total) >= 0 
-                          ? 'text-success' 
-                          : 'text-destructive'
-                      }`}>
-                        {formatCurrency(
-                          reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total
-                        )}
-                      </p>
-                      <p className="text-muted-foreground text-sm mt-2">
-                        {reportData.sales.totalRevenue > 0 
-                          ? `${(((reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total) / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
-                          : 'N/A'
-                        }
-                      </p>
-                    </div>
-
-                    {/* Breakdown */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      <div className="text-center">
-                        <p className="text-secondary">Total Revenue</p>
-                        <p className="text-xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-secondary">Total COGS</p>
-                        <p className="text-xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-secondary">Employee Payments</p>
-                        <p className="text-xl font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-secondary">Operating Expenses</p>
-                        <p className="text-xl font-bold text-warning">{formatCurrency(reportData.otherExpenses.total)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
             {/* Report Header */}
             <section className="animate-slide-up">
               <Card className="card-metric">
@@ -680,6 +625,51 @@ const ReportsModule = () => {
               </Card>
             </section>
 
+            {/* Profit/Loss Summary */}
+            <section className="animate-fade-in">
+              <Card className="card-metric">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Profit/Loss Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div className="text-center">
+                      <p className="text-secondary">Total Revenue</p>
+                      <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Total COGS</p>
+                      <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Employee Payments</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Operating Expenses</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.otherExpenses.total)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Net Profit</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {formatCurrency(
+                          reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {reportData.sales.totalRevenue > 0 
+                          ? `${(((reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total) / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
           </>
         )}
       </div>
