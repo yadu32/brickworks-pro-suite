@@ -9,6 +9,7 @@ import {
   Settings,
   TrendingDown
 } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 interface NavigationProps {
   activeTab: string;
@@ -52,10 +53,12 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
                 </button>
               );
             })}
+            <ThemeToggle />
           </div>
 
           {/* Mobile Menu */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center space-x-2">
+            <ThemeToggle />
             <select
               value={activeTab}
               onChange={(e) => onTabChange(e.target.value)}
