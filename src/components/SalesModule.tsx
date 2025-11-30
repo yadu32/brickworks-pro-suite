@@ -14,9 +14,9 @@ import { generateInvoicePDF, shareViaWhatsApp, shareViaEmail, downloadPDF } from
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddCustomerDialog } from '@/components/AddCustomerDialog';
 
-interface BrickType {
+interface ProductType {
   id: string;
-  type_name: string;
+  name: string;
   unit: string;
 }
 
@@ -25,14 +25,14 @@ interface Sale {
   date: string;
   customer_name: string;
   customer_phone: string;
-  brick_type_id: string;
+  product_id: string;
   quantity_sold: number;
   rate_per_brick: number;
   total_amount: number;
   amount_received: number;
   balance_due: number;
   notes: string;
-  brick_types: BrickType;
+  product_definitions: ProductType;
 }
 
 interface CustomerSummary {
@@ -47,7 +47,7 @@ interface CustomerSummary {
 
 const SalesModule = () => {
   const [sales, setSales] = useState<Sale[]>([]);
-  const [brickTypes, setBrickTypes] = useState<BrickType[]>([]);
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
@@ -70,7 +70,7 @@ const SalesModule = () => {
     date: new Date().toISOString().split('T')[0],
     customer_name: '',
     customer_phone: '',
-    brick_type_id: '',
+    product_id: '',
     quantity_sold: '',
     rate_per_brick: '',
     amount_received: '',
@@ -85,17 +85,16 @@ const SalesModule = () => {
     }).format(amount);
   };
 
-  const loadBrickTypes = async () => {
+  const loadProductTypes = async () => {
     const { data, error } = await supabase
-      .from('brick_types')
+      .from('product_definitions')
       .select('*')
-      .eq('is_active', true)
-      .order('type_name');
+      .order('name');
     
     if (error) {
-      toast({ title: 'Error loading brick types', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error loading product types', description: error.message, variant: 'destructive' });
     } else {
-      setBrickTypes(data || []);
+      setProductTypes(data || []);
     }
   };
 
@@ -104,9 +103,9 @@ const SalesModule = () => {
       .from('sales')
       .select(`
         *,
-        brick_types (
+        product_definitions (
           id,
-          type_name,
+          name,
           unit
         )
       `)
@@ -115,8 +114,8 @@ const SalesModule = () => {
     if (error) {
       toast({ title: 'Error loading sales', description: error.message, variant: 'destructive' });
     } else {
-      setSales(data || []);
-      calculateCustomerSummaries(data || []);
+      setSales(data as unknown as Sale[] || []);
+      calculateCustomerSummaries(data as unknown as Sale[] || []);
     }
   };
 
@@ -178,9 +177,9 @@ const SalesModule = () => {
       .from('sales')
       .select(`
         *,
-        brick_types (
+        product_definitions (
           id,
-          type_name,
+          name,
           unit
         )
       `)
@@ -190,7 +189,7 @@ const SalesModule = () => {
     if (error) {
       toast({ title: 'Error loading customer sales', description: error.message, variant: 'destructive' });
     } else {
-      setCustomerSales(data || []);
+      setCustomerSales(data as unknown as Sale[] || []);
     }
   };
 
@@ -258,7 +257,7 @@ const SalesModule = () => {
         date: saleForm.date,
         customer_name: saleForm.customer_name,
         customer_phone: saleForm.customer_phone,
-        brick_type_id: saleForm.brick_type_id,
+        product_id: saleForm.product_id,
         quantity_sold: Number(saleForm.quantity_sold),
         rate_per_brick: Number(saleForm.rate_per_brick),
         total_amount: totalAmount,
@@ -284,7 +283,7 @@ const SalesModule = () => {
         date: saleForm.date,
         customer_name: saleForm.customer_name,
         customer_phone: saleForm.customer_phone,
-        brick_type_id: saleForm.brick_type_id,
+        product_id: saleForm.product_id,
         quantity_sold: Number(saleForm.quantity_sold),
         rate_per_brick: Number(saleForm.rate_per_brick),
         total_amount: totalAmount,
@@ -329,7 +328,7 @@ const SalesModule = () => {
       date: new Date().toISOString().split('T')[0],
       customer_name: '',
       customer_phone: '',
-      brick_type_id: '',
+      product_id: '',
       quantity_sold: '',
       rate_per_brick: '',
       amount_received: '',
@@ -365,7 +364,7 @@ const SalesModule = () => {
       date: sale.date,
       customer_name: sale.customer_name,
       customer_phone: sale.customer_phone || '',
-      brick_type_id: sale.brick_type_id,
+      product_id: sale.product_id,
       quantity_sold: sale.quantity_sold.toString(),
       rate_per_brick: sale.rate_per_brick.toString(),
       amount_received: sale.amount_received.toString(),
@@ -392,7 +391,7 @@ const SalesModule = () => {
         date: sale.date,
         customerName: sale.customer_name,
         customerPhone: sale.customer_phone,
-        brickTypeName: sale.brick_types.type_name,
+        brickTypeName: sale.product_definitions?.name || 'Product',
         quantity: sale.quantity_sold,
         ratePerBrick: sale.rate_per_brick,
         totalAmount: sale.total_amount,
@@ -475,7 +474,7 @@ const SalesModule = () => {
   };
 
   useEffect(() => {
-    loadBrickTypes();
+    loadProductTypes();
     loadSales();
   }, []);
 
@@ -571,7 +570,7 @@ const SalesModule = () => {
                               </td>
                               <td className="py-3 px-4 text-foreground">
                                 <div>
-                                  <p className="font-medium">Sale: {sale.brick_types.type_name}</p>
+                                  <p className="font-medium">Sale: {sale.product_definitions?.name || 'Product'}</p>
                                   <p className="text-sm text-secondary">
                                     {sale.quantity_sold.toLocaleString()} @ {formatCurrency(sale.rate_per_brick)}
                                   </p>
@@ -691,15 +690,15 @@ const SalesModule = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="brickType">Brick Type</Label>
-                    <Select value={saleForm.brick_type_id} onValueChange={(value) => setSaleForm({...saleForm, brick_type_id: value})}>
+                    <Label htmlFor="productType">Product Type</Label>
+                    <Select value={saleForm.product_id} onValueChange={(value) => setSaleForm({...saleForm, product_id: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select brick type" />
+                        <SelectValue placeholder="Select product type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {brickTypes.map((type) => (
+                        {productTypes.map((type) => (
                           <SelectItem key={type.id} value={type.id}>
-                            {type.type_name}
+                            {type.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1077,8 +1076,8 @@ const SalesModule = () => {
                       </td>
                       <td className="py-3 px-4 text-foreground">
                         <div>
-                          <p className="font-medium">{sale.brick_types.type_name}</p>
-                          <p className="text-sm text-secondary">{sale.quantity_sold.toLocaleString()} {sale.brick_types.unit}</p>
+                          <p className="font-medium">{sale.product_definitions?.name || 'Product'}</p>
+                          <p className="text-sm text-secondary">{sale.quantity_sold.toLocaleString()} {sale.product_definitions?.unit || 'units'}</p>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">

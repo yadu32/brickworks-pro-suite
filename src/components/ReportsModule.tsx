@@ -338,6 +338,57 @@ const ReportsModule = () => {
 
         {reportData && (
           <>
+            {/* Profit/Loss Summary - TOP */}
+            <section className="animate-scale-in">
+              <Card className="card-metric border-2 border-primary">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center text-xl">
+                    <DollarSign className="h-6 w-6 mr-2" />
+                    Profit/Loss Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div className="text-center">
+                      <p className="text-secondary">Total Revenue</p>
+                      <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Total COGS</p>
+                      <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Employee Payments</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Operating Expenses</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.otherExpenses.total)}</p>
+                    </div>
+                    <div className="text-center bg-muted/30 rounded-lg p-3">
+                      <p className="text-secondary font-semibold">Net Profit</p>
+                      {(() => {
+                        const netProfit = reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total;
+                        return (
+                          <>
+                            <p className={`text-3xl font-bold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {formatCurrency(netProfit)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {reportData.sales.totalRevenue > 0 
+                                ? `${((netProfit / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
+                                : 'N/A'
+                              }
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
             {/* Report Header */}
             <section className="animate-slide-up">
               <Card className="card-metric">
@@ -625,51 +676,6 @@ const ReportsModule = () => {
               </Card>
             </section>
 
-            {/* Profit/Loss Summary */}
-            <section className="animate-fade-in">
-              <Card className="card-metric">
-                <CardHeader>
-                  <CardTitle className="text-foreground flex items-center">
-                    <DollarSign className="h-5 w-5 mr-2" />
-                    Profit/Loss Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                    <div className="text-center">
-                      <p className="text-secondary">Total Revenue</p>
-                      <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-secondary">Total COGS</p>
-                      <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-secondary">Employee Payments</p>
-                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-secondary">Operating Expenses</p>
-                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.otherExpenses.total)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-secondary">Net Profit</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {formatCurrency(
-                          reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {reportData.sales.totalRevenue > 0 
-                          ? `${(((reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total) / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
-                          : 'N/A'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
           </>
         )}
       </div>

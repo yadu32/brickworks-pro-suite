@@ -85,12 +85,43 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          factory_id: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          factory_id: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          factory_id?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       employee_payments: {
         Row: {
           amount: number
           created_at: string
           date: string
           employee_name: string
+          factory_id: string | null
           id: string
           notes: string | null
           payment_type: string
@@ -101,6 +132,7 @@ export type Database = {
           created_at?: string
           date: string
           employee_name: string
+          factory_id?: string | null
           id?: string
           notes?: string | null
           payment_type: string
@@ -111,10 +143,76 @@ export type Database = {
           created_at?: string
           date?: string
           employee_name?: string
+          factory_id?: string | null
           id?: string
           notes?: string | null
           payment_type?: string
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_payments_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          created_at: string | null
+          daily_wage: number | null
+          factory_id: string
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          daily_wage?: number | null
+          factory_id: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone?: string | null
+          role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          daily_wage?: number | null
+          factory_id?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      factories: {
+        Row: {
+          created_at: string
+          id: string
+          location: string | null
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string
+          owner_id?: string
         }
         Relationships: []
       }
@@ -123,6 +221,7 @@ export type Database = {
           brick_type_id: string | null
           created_at: string
           effective_date: string
+          factory_id: string | null
           id: string
           is_active: boolean
           rate_amount: number
@@ -133,6 +232,7 @@ export type Database = {
           brick_type_id?: string | null
           created_at?: string
           effective_date?: string
+          factory_id?: string | null
           id?: string
           is_active?: boolean
           rate_amount: number
@@ -143,6 +243,7 @@ export type Database = {
           brick_type_id?: string | null
           created_at?: string
           effective_date?: string
+          factory_id?: string | null
           id?: string
           is_active?: boolean
           rate_amount?: number
@@ -157,12 +258,52 @@ export type Database = {
             referencedRelation: "brick_types"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "factory_rates_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_definitions: {
+        Row: {
+          created_at: string
+          factory_id: string
+          id: string
+          name: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          factory_id: string
+          id?: string
+          name: string
+          unit: string
+        }
+        Update: {
+          created_at?: string
+          factory_id?: string
+          id?: string
+          name?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_definitions_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
         ]
       }
       material_purchases: {
         Row: {
           created_at: string
           date: string
+          factory_id: string | null
           id: string
           material_id: string
           notes: string | null
@@ -176,6 +317,7 @@ export type Database = {
         Insert: {
           created_at?: string
           date: string
+          factory_id?: string | null
           id?: string
           material_id: string
           notes?: string | null
@@ -189,6 +331,7 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
+          factory_id?: string | null
           id?: string
           material_id?: string
           notes?: string | null
@@ -200,6 +343,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "material_purchases_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "material_purchases_material_id_fkey"
             columns: ["material_id"]
@@ -213,6 +363,7 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          factory_id: string | null
           id: string
           material_id: string
           purpose: string
@@ -222,6 +373,7 @@ export type Database = {
         Insert: {
           created_at?: string
           date: string
+          factory_id?: string | null
           id?: string
           material_id: string
           purpose: string
@@ -231,6 +383,7 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
+          factory_id?: string | null
           id?: string
           material_id?: string
           purpose?: string
@@ -238,6 +391,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "material_usage_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "material_usage_material_id_fkey"
             columns: ["material_id"]
@@ -252,6 +412,7 @@ export type Database = {
           average_cost_per_unit: number
           created_at: string
           current_stock_qty: number
+          factory_id: string | null
           id: string
           material_name: string
           unit: string
@@ -261,6 +422,7 @@ export type Database = {
           average_cost_per_unit?: number
           created_at?: string
           current_stock_qty?: number
+          factory_id?: string | null
           id?: string
           material_name: string
           unit: string
@@ -270,12 +432,21 @@ export type Database = {
           average_cost_per_unit?: number
           created_at?: string
           current_stock_qty?: number
+          factory_id?: string | null
           id?: string
           material_name?: string
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "materials_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       other_expenses: {
         Row: {
@@ -284,6 +455,7 @@ export type Database = {
           date: string
           description: string
           expense_type: string
+          factory_id: string | null
           id: string
           notes: string | null
           receipt_number: string | null
@@ -296,6 +468,7 @@ export type Database = {
           date: string
           description: string
           expense_type: string
+          factory_id?: string | null
           id?: string
           notes?: string | null
           receipt_number?: string | null
@@ -308,25 +481,124 @@ export type Database = {
           date?: string
           description?: string
           expense_type?: string
+          factory_id?: string | null
           id?: string
           notes?: string | null
           receipt_number?: string | null
           updated_at?: string
           vendor_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "other_expenses_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_definitions: {
+        Row: {
+          created_at: string
+          factory_id: string
+          id: string
+          items_per_punch: number | null
+          name: string
+          size_description: string | null
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          factory_id: string
+          id?: string
+          items_per_punch?: number | null
+          name: string
+          size_description?: string | null
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          factory_id?: string
+          id?: string
+          items_per_punch?: number | null
+          name?: string
+          size_description?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_definitions_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_logs: {
+        Row: {
+          created_at: string
+          date: string | null
+          factory_id: string
+          id: string
+          product_id: string
+          product_name: string
+          punches: number | null
+          quantity: number
+          remarks: string | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string | null
+          factory_id: string
+          id?: string
+          product_id: string
+          product_name: string
+          punches?: number | null
+          quantity: number
+          remarks?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string | null
+          factory_id?: string
+          id?: string
+          product_id?: string
+          product_name?: string
+          punches?: number | null
+          quantity?: number
+          remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_production_product"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_logs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sales: {
         Row: {
           amount_received: number
           balance_due: number
-          brick_type_id: string
           created_at: string
           customer_name: string
           customer_phone: string | null
           date: string
+          factory_id: string | null
           id: string
           notes: string | null
+          product_id: string
           quantity_sold: number
           rate_per_brick: number
           total_amount: number
@@ -335,13 +607,14 @@ export type Database = {
         Insert: {
           amount_received?: number
           balance_due?: number
-          brick_type_id: string
           created_at?: string
           customer_name: string
           customer_phone?: string | null
           date: string
+          factory_id?: string | null
           id?: string
           notes?: string | null
+          product_id: string
           quantity_sold: number
           rate_per_brick: number
           total_amount: number
@@ -350,13 +623,14 @@ export type Database = {
         Update: {
           amount_received?: number
           balance_due?: number
-          brick_type_id?: string
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
           date?: string
+          factory_id?: string | null
           id?: string
           notes?: string | null
+          product_id?: string
           quantity_sold?: number
           rate_per_brick?: number
           total_amount?: number
@@ -364,13 +638,57 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_sales_product"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_definitions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_brick_type_id_fkey"
-            columns: ["brick_type_id"]
+            columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "brick_types"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sales_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact_number: string | null
+          created_at: string | null
+          factory_id: string
+          id: string
+          material_type: string | null
+          name: string
+        }
+        Insert: {
+          address?: string | null
+          contact_number?: string | null
+          created_at?: string | null
+          factory_id: string
+          id?: string
+          material_type?: string | null
+          name: string
+        }
+        Update: {
+          address?: string | null
+          contact_number?: string | null
+          created_at?: string | null
+          factory_id?: string
+          id?: string
+          material_type?: string | null
+          name?: string
+        }
+        Relationships: []
       }
     }
     Views: {
