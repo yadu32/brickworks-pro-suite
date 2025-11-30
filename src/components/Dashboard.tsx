@@ -70,9 +70,9 @@ const Dashboard = () => {
       const totalSixInchProd = allProd?.filter(p => p.brick_type_id === sixInchType?.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
 
       // Total sales for stock calculation
-      const { data: allSales } = await supabase.from('sales').select('*, brick_types(*)');
-      const totalFourInchSold = allSales?.filter(s => s.brick_type_id === fourInchType?.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
-      const totalSixInchSold = allSales?.filter(s => s.brick_type_id === sixInchType?.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
+      const { data: allSales } = await supabase.from('sales').select('*');
+      const totalFourInchSold = allSales?.filter(s => s.product_id === fourInchType?.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
+      const totalSixInchSold = allSales?.filter(s => s.product_id === sixInchType?.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
 
       // Sales metrics
       const { data: todaySales } = await supabase.from('sales').select('*').eq('date', today);
@@ -140,6 +140,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
+      {/* Hero Section */}
       <div 
         className="relative h-64 bg-cover bg-center flex items-center justify-center"
         style={{ backgroundImage: `url(${heroFactory})` }}
@@ -147,43 +148,10 @@ const Dashboard = () => {
         <div className="absolute inset-0 bg-background/80"></div>
         <div className="relative text-center z-10">
           <h1 className="text-4xl font-bold text-foreground mb-2">BrickWorks Manager</h1>
-          <p className="text-lg text-muted-foreground">Professional Brick Manufacturing Management System</p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-6 space-y-8">
-        {/* Production & Inventory */}
-        <section className="animate-slide-up">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Production & Inventory</h2>
-          <div className="card-metric">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="text-center">
-                <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
-                <p className="text-secondary">Monthly 4-inch</p>
-                <p className="text-2xl font-bold text-foreground">{dashboardData.monthlyProduction.fourInch.toLocaleString()}</p>
-              </div>
-              
-              <div className="text-center">
-                <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
-                <p className="text-secondary">Monthly 6-inch</p>
-                <p className="text-2xl font-bold text-foreground">{dashboardData.monthlyProduction.sixInch.toLocaleString()}</p>
-              </div>
-              
-              <div className="text-center">
-                <Package className="h-8 w-8 text-warning mx-auto mb-2" />
-                <p className="text-secondary">4-inch Stock</p>
-                <p className="text-2xl font-bold text-foreground">{dashboardData.currentStock.fourInch.toLocaleString()}</p>
-              </div>
-              
-              <div className="text-center">
-                <Package className="h-8 w-8 text-warning mx-auto mb-2" />
-                <p className="text-secondary">6-inch Stock</p>
-                <p className="text-2xl font-bold text-foreground">{dashboardData.currentStock.sixInch.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Sales Summary */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
@@ -198,13 +166,38 @@ const Dashboard = () => {
               </div>
             </div>
             
-            <div className="card-metric">
+            <div 
+              className="card-metric cursor-pointer hover:ring-2 hover:ring-warning transition-all"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('changeTab', { detail: 'sales' }));
+              }}
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-secondary">Outstanding</p>
+                  <p className="text-secondary">Outstanding (Click to view)</p>
                   <p className="text-metric text-warning">{formatCurrency(dashboardData.salesMetrics.outstandingReceivables)}</p>
                 </div>
                 <AlertTriangle className="h-12 w-12 text-warning" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Production & Inventory */}
+        <section className="animate-slide-up">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Production & Inventory</h2>
+          <div className="card-metric">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="text-center">
+                <Package className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-secondary">4-inch Stock</p>
+                <p className="text-2xl font-bold text-foreground">{dashboardData.currentStock.fourInch.toLocaleString()}</p>
+              </div>
+              
+              <div className="text-center">
+                <Package className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-secondary">6-inch Stock</p>
+                <p className="text-2xl font-bold text-foreground">{dashboardData.currentStock.sixInch.toLocaleString()}</p>
               </div>
             </div>
           </div>

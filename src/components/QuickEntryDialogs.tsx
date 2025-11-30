@@ -30,7 +30,7 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
     date: new Date().toISOString().split('T')[0],
     customer_name: '',
     customer_phone: '',
-    brick_type_id: '',
+    product_id: '',
     quantity_sold: '',
     rate_per_brick: '',
     amount_received: '',
@@ -190,8 +190,8 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
                 <Input type="date" value={saleForm.date} onChange={(e) => setSaleForm({...saleForm, date: e.target.value})} required />
               </div>
               <div>
-                <Label>Brick Type</Label>
-                <Select value={saleForm.brick_type_id} onValueChange={(value) => setSaleForm({...saleForm, brick_type_id: value})}>
+                <Label>Product Type</Label>
+                <Select value={saleForm.product_id} onValueChange={(value) => setSaleForm({...saleForm, product_id: value})}>
                   <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>
                     {brickTypes.map(bt => <SelectItem key={bt.id} value={bt.id}>{bt.type_name}</SelectItem>)}
