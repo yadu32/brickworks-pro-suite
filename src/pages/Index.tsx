@@ -7,7 +7,7 @@ import SalesModule from '@/components/SalesModule';
 import PaymentsModule from '@/components/PaymentsModule';
 import ReportsModule from '@/components/ReportsModule';
 import OtherExpensesModule from '@/components/OtherExpensesModule';
-import { FactoryRatesSettings } from '@/components/FactoryRatesSettings';
+import { SettingsHub } from '@/components/SettingsHub';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -21,7 +21,6 @@ const Index = () => {
     return () => window.removeEventListener('changeTab', handleTabChange as EventListener);
   }, []);
 
-
   return (
     <div className="min-h-screen bg-background">
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
@@ -32,7 +31,7 @@ const Index = () => {
       {activeTab === 'payments' && <PaymentsModule />}
       {activeTab === 'expenses' && <OtherExpensesModule />}
       {activeTab === 'weekly' && <ReportsModule />}
-      {activeTab === 'settings' && <FactoryRatesSettings />}
+      {activeTab === 'settings' && <SettingsHub />}
     </div>
   );
 };
