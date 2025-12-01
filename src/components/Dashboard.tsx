@@ -110,22 +110,14 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div 
-        className="relative h-64 bg-cover bg-center flex items-center justify-center"
-        style={{ backgroundImage: `url(${heroFactory})` }}
-      >
-        <div className="absolute inset-0 bg-background/80"></div>
-        {/* Settings Button - Top Left */}
+      {/* Settings Button - Top */}
+      <div className="p-4">
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('changeTab', { detail: 'settings' }))}
-          className="absolute top-4 left-4 z-20 p-3 bg-card/90 backdrop-blur-sm rounded-full hover:bg-primary transition-colors"
+          className="p-3 bg-card/90 backdrop-blur-sm rounded-full hover:bg-primary transition-colors"
         >
           <Settings className="h-6 w-6 text-foreground hover:text-primary-foreground" />
         </button>
-        <div className="relative text-center z-10">
-          <h1 className="text-4xl font-bold text-foreground mb-2">BrickWorks Manager</h1>
-        </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-6 space-y-8">
