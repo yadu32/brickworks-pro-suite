@@ -19,7 +19,8 @@ interface QuickEntryDialogsProps {
 
 export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialogsProps) {
   const { toast } = useToast();
-  const [brickTypes, setBrickTypes] = useState<any[]>([]);
+  const [factoryId, setFactoryId] = useState<string | null>(null);
+  const [products, setProducts] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [customerOptions, setCustomerOptions] = useState<Array<{ value: string; label: string; phone: string }>>([]);
   const [employeeOptions, setEmployeeOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -39,9 +40,9 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
 
   const [productionForm, setProductionForm] = useState({
     date: new Date().toISOString().split('T')[0],
-    brick_type_id: '',
-    number_of_punches: '',
-    actual_bricks_produced: '',
+    product_id: '',
+    punches: '',
+    quantity: '',
     remarks: ''
   });
 
@@ -61,61 +62,89 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
   });
 
   useEffect(() => {
-    if (type) {
+    loadFactory();
+  }, []);
+
+  useEffect(() => {
+    if (type && factoryId) {
       loadInitialData();
     }
-  }, [type]);
+  }, [type, factoryId]);
+
+  const loadFactory = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('factories')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+
+    if (data) {
+      setFactoryId(data.id);
+    }
+  };
 
   const loadInitialData = async () => {
-    const { data: brickData } = await supabase
-      .from('brick_types')
-      .select('*')
-      .eq('is_active', true);
-    if (brickData) setBrickTypes(brickData);
+    if (!factoryId) return;
 
+    // Load products (brick types) for this factory
+    const { data: productData } = await supabase
+      .from('product_definitions')
+      .select('*')
+      .eq('factory_id', factoryId);
+    if (productData) setProducts(productData);
+
+    // Load materials for this factory
     const { data: materialData } = await supabase
       .from('materials')
-      .select('*');
+      .select('*')
+      .eq('factory_id', factoryId);
     if (materialData) setMaterials(materialData);
 
-    const { data: salesData } = await supabase
-      .from('sales')
-      .select('customer_name, customer_phone');
-    if (salesData) {
-      const uniqueCustomers = new Map();
-      salesData.forEach(sale => {
-        if (sale.customer_name && !uniqueCustomers.has(sale.customer_name.toLowerCase())) {
-          uniqueCustomers.set(sale.customer_name.toLowerCase(), {
-            value: sale.customer_name,
-            label: sale.customer_name,
-            phone: sale.customer_phone || ''
-          });
-        }
-      });
-      setCustomerOptions(Array.from(uniqueCustomers.values()));
+    // Load customers for this factory
+    const { data: customersData } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('factory_id', factoryId);
+    if (customersData) {
+      setCustomerOptions(customersData.map(c => ({
+        value: c.name,
+        label: c.name,
+        phone: c.phone || ''
+      })));
     }
 
-    const { data: paymentsData } = await supabase
-      .from('employee_payments')
-      .select('employee_name');
-    if (paymentsData) {
-      const uniqueEmployees = new Set();
-      paymentsData.forEach(payment => {
-        if (payment.employee_name) uniqueEmployees.add(payment.employee_name);
-      });
-      setEmployeeOptions(Array.from(uniqueEmployees).map(name => ({ value: name as string, label: name as string })));
+    // Load employees for this factory
+    const { data: employeesData } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('factory_id', factoryId)
+      .eq('is_active', true);
+    if (employeesData) {
+      setEmployeeOptions(employeesData.map(e => ({ value: e.name, label: e.name })));
     }
   };
 
   const handleSaleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) return;
+
+    const selectedProduct = products.find(p => p.id === saleForm.product_id);
+
     const { error } = await supabase.from('sales').insert([{
-      ...saleForm,
+      factory_id: factoryId,
+      date: saleForm.date,
+      customer_name: saleForm.customer_name,
+      customer_phone: saleForm.customer_phone || null,
+      product_id: saleForm.product_id,
       quantity_sold: Number(saleForm.quantity_sold),
       rate_per_brick: Number(saleForm.rate_per_brick),
       total_amount: Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick),
       amount_received: Number(saleForm.amount_received || 0),
-      balance_due: (Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick)) - Number(saleForm.amount_received || 0)
+      balance_due: (Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick)) - Number(saleForm.amount_received || 0),
+      notes: saleForm.notes || null
     }]);
     
     if (error) {
@@ -129,10 +158,18 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
 
   const handleProductionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('bricks_production').insert([{
-      ...productionForm,
-      number_of_punches: Number(productionForm.number_of_punches),
-      actual_bricks_produced: Number(productionForm.actual_bricks_produced)
+    if (!factoryId) return;
+
+    const selectedProduct = products.find(p => p.id === productionForm.product_id);
+
+    const { error } = await supabase.from('production_logs').insert([{
+      factory_id: factoryId,
+      date: productionForm.date,
+      product_id: productionForm.product_id,
+      product_name: selectedProduct?.name || '',
+      punches: Number(productionForm.punches) || null,
+      quantity: Number(productionForm.quantity),
+      remarks: productionForm.remarks || null
     }]);
     
     if (error) {
@@ -146,9 +183,14 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
 
   const handleUsageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) return;
+
     const { error } = await supabase.from('material_usage').insert([{
-      ...usageForm,
-      quantity_used: Number(usageForm.quantity_used)
+      factory_id: factoryId,
+      date: usageForm.date,
+      material_id: usageForm.material_id,
+      quantity_used: Number(usageForm.quantity_used),
+      purpose: usageForm.purpose
     }]);
     
     if (error) {
@@ -162,9 +204,15 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) return;
+
     const { error } = await supabase.from('employee_payments').insert([{
-      ...paymentForm,
-      amount: Number(paymentForm.amount)
+      factory_id: factoryId,
+      date: paymentForm.date,
+      employee_name: paymentForm.employee_name,
+      amount: Number(paymentForm.amount),
+      payment_type: paymentForm.payment_type,
+      notes: paymentForm.notes || null
     }]);
     
     if (error) {
@@ -194,7 +242,7 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
                 <Select value={saleForm.product_id} onValueChange={(value) => setSaleForm({...saleForm, product_id: value})}>
                   <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>
-                    {brickTypes.map(bt => <SelectItem key={bt.id} value={bt.id}>{bt.type_name}</SelectItem>)}
+                    {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -257,10 +305,10 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
               </div>
               <div>
                 <Label>Brick Type</Label>
-                <Select value={productionForm.brick_type_id} onValueChange={(value) => setProductionForm({...productionForm, brick_type_id: value})}>
+                <Select value={productionForm.product_id} onValueChange={(value) => setProductionForm({...productionForm, product_id: value})}>
                   <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>
-                    {brickTypes.map(bt => <SelectItem key={bt.id} value={bt.id}>{bt.type_name}</SelectItem>)}
+                    {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -268,11 +316,11 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Number of Punches</Label>
-                <Input type="number" value={productionForm.number_of_punches} onChange={(e) => setProductionForm({...productionForm, number_of_punches: e.target.value})} required />
+                <Input type="number" value={productionForm.punches} onChange={(e) => setProductionForm({...productionForm, punches: e.target.value})} required />
               </div>
               <div>
-                <Label>Actual Bricks Produced</Label>
-                <Input type="number" value={productionForm.actual_bricks_produced} onChange={(e) => setProductionForm({...productionForm, actual_bricks_produced: e.target.value})} required />
+                <Label>Actual Quantity Produced</Label>
+                <Input type="number" value={productionForm.quantity} onChange={(e) => setProductionForm({...productionForm, quantity: e.target.value})} required />
               </div>
             </div>
             <div>
