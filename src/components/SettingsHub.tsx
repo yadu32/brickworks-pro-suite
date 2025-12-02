@@ -13,7 +13,8 @@ import {
   Plus, 
   Pencil, 
   Trash2,
-  Factory
+  Factory,
+  LogOut
 } from "lucide-react";
 import {
   Dialog,
@@ -35,12 +36,12 @@ import {
 
 type SettingsSection = 'brick-types' | 'raw-materials' | 'wages-rates' | 'factory-info';
 
-interface BrickType {
+interface ProductDefinition {
   id: string;
-  type_name: string;
-  standard_bricks_per_punch: number;
+  name: string;
+  size_description: string | null;
+  items_per_punch: number | null;
   unit: string;
-  is_active: boolean;
 }
 
 interface Material {
@@ -59,18 +60,29 @@ interface FactoryRate {
   is_active: boolean;
 }
 
+interface FactoryInfo {
+  id: string;
+  name: string;
+  location: string | null;
+}
+
 export const SettingsHub = () => {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('brick-types');
+  const [activeSection, setActiveSection] = useState<SettingsSection>('factory-info');
   const { toast } = useToast();
 
-  // Brick Types State
-  const [brickTypes, setBrickTypes] = useState<BrickType[]>([]);
-  const [brickTypeDialog, setBrickTypeDialog] = useState(false);
-  const [editingBrickType, setEditingBrickType] = useState<BrickType | null>(null);
-  const [brickTypeName, setBrickTypeName] = useState('');
-  const [brickTypePerPunch, setBrickTypePerPunch] = useState<number>(4);
-  const [brickTypeUnit, setBrickTypeUnit] = useState('pieces');
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'brick' | 'material'; id: string } | null>(null);
+  // Factory State
+  const [factory, setFactory] = useState<FactoryInfo | null>(null);
+  const [factoryName, setFactoryName] = useState('');
+  const [factoryLocation, setFactoryLocation] = useState('');
+
+  // Product Definitions State (instead of brick_types)
+  const [products, setProducts] = useState<ProductDefinition[]>([]);
+  const [productDialog, setProductDialog] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductDefinition | null>(null);
+  const [productName, setProductName] = useState('');
+  const [productSize, setProductSize] = useState('');
+  const [productPerPunch, setProductPerPunch] = useState<number>(4);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'product' | 'material'; id: string } | null>(null);
 
   // Materials State
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -85,34 +97,64 @@ export const SettingsHub = () => {
   const [loadingRate, setLoadingRate] = useState<number>(2);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Factory Info State
-  const [factoryName, setFactoryName] = useState('BrickWorks Factory');
-
   useEffect(() => {
-    loadAllData();
+    loadFactory();
   }, []);
 
-  const loadAllData = async () => {
-    await Promise.all([loadBrickTypes(), loadMaterials(), loadRates()]);
-  };
+  useEffect(() => {
+    if (factory) {
+      loadAllData();
+    }
+  }, [factory]);
 
-  const loadBrickTypes = async () => {
+  const loadFactory = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const { data, error } = await supabase
-      .from("brick_types")
-      .select("*")
-      .order("type_name");
+      .from('factories')
+      .select('*')
+      .eq('owner_id', user.id)
+      .single();
 
     if (error) {
-      toast({ title: "Error loading brick types", description: error.message, variant: "destructive" });
+      toast({ title: "Error loading factory", description: error.message, variant: "destructive" });
       return;
     }
-    setBrickTypes(data || []);
+
+    setFactory(data);
+    setFactoryName(data.name);
+    setFactoryLocation(data.location || '');
+  };
+
+  const loadAllData = async () => {
+    if (!factory) return;
+    await Promise.all([loadProducts(), loadMaterials(), loadRates()]);
+  };
+
+  const loadProducts = async () => {
+    if (!factory) return;
+    
+    const { data, error } = await supabase
+      .from("product_definitions")
+      .select("*")
+      .eq("factory_id", factory.id)
+      .order("name");
+
+    if (error) {
+      toast({ title: "Error loading products", description: error.message, variant: "destructive" });
+      return;
+    }
+    setProducts(data || []);
   };
 
   const loadMaterials = async () => {
+    if (!factory) return;
+    
     const { data, error } = await supabase
       .from("materials")
       .select("*")
+      .eq("factory_id", factory.id)
       .order("material_name");
 
     if (error) {
@@ -123,9 +165,12 @@ export const SettingsHub = () => {
   };
 
   const loadRates = async () => {
+    if (!factory) return;
+    
     const { data, error } = await supabase
       .from("factory_rates")
       .select("*")
+      .eq("factory_id", factory.id)
       .eq("is_active", true)
       .order("effective_date", { ascending: false });
 
@@ -143,70 +188,92 @@ export const SettingsHub = () => {
     }
   };
 
-  // Brick Type CRUD
-  const openBrickTypeDialog = (brickType?: BrickType) => {
-    if (brickType) {
-      setEditingBrickType(brickType);
-      setBrickTypeName(brickType.type_name);
-      setBrickTypePerPunch(brickType.standard_bricks_per_punch);
-      setBrickTypeUnit(brickType.unit);
-    } else {
-      setEditingBrickType(null);
-      setBrickTypeName('');
-      setBrickTypePerPunch(4);
-      setBrickTypeUnit('pieces');
-    }
-    setBrickTypeDialog(true);
-  };
-
-  const saveBrickType = async () => {
-    if (!brickTypeName.trim()) {
-      toast({ title: "Please enter brick type name", variant: "destructive" });
-      return;
-    }
-
+  // Factory Update
+  const saveFactory = async () => {
+    if (!factory) return;
+    
     setIsLoading(true);
     try {
-      if (editingBrickType) {
-        const { error } = await supabase
-          .from("brick_types")
-          .update({
-            type_name: brickTypeName,
-            standard_bricks_per_punch: brickTypePerPunch,
-            unit: brickTypeUnit,
-          })
-          .eq("id", editingBrickType.id);
+      const { error } = await supabase
+        .from('factories')
+        .update({ name: factoryName, location: factoryLocation || null })
+        .eq('id', factory.id);
 
-        if (error) throw error;
-        toast({ title: "Brick type updated successfully" });
-      } else {
-        const { error } = await supabase.from("brick_types").insert({
-          type_name: brickTypeName,
-          standard_bricks_per_punch: brickTypePerPunch,
-          unit: brickTypeUnit,
-          is_active: true,
-        });
-
-        if (error) throw error;
-        toast({ title: "Brick type added successfully" });
-      }
-      setBrickTypeDialog(false);
-      loadBrickTypes();
+      if (error) throw error;
+      toast({ title: "Factory info saved" });
+      loadFactory();
     } catch (error: any) {
-      toast({ title: "Error saving brick type", description: error.message, variant: "destructive" });
+      toast({ title: "Error saving factory", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const deleteBrickType = async (id: string) => {
+  // Product CRUD
+  const openProductDialog = (product?: ProductDefinition) => {
+    if (product) {
+      setEditingProduct(product);
+      setProductName(product.name);
+      setProductSize(product.size_description || '');
+      setProductPerPunch(product.items_per_punch || 4);
+    } else {
+      setEditingProduct(null);
+      setProductName('');
+      setProductSize('');
+      setProductPerPunch(4);
+    }
+    setProductDialog(true);
+  };
+
+  const saveProduct = async () => {
+    if (!factory || !productName.trim()) {
+      toast({ title: "Please enter product name", variant: "destructive" });
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const { error } = await supabase.from("brick_types").delete().eq("id", id);
-      if (error) throw error;
-      toast({ title: "Brick type deleted" });
-      loadBrickTypes();
+      if (editingProduct) {
+        const { error } = await supabase
+          .from("product_definitions")
+          .update({
+            name: productName,
+            size_description: productSize || null,
+            items_per_punch: productPerPunch,
+          })
+          .eq("id", editingProduct.id);
+
+        if (error) throw error;
+        toast({ title: "Product updated successfully" });
+      } else {
+        const { error } = await supabase.from("product_definitions").insert({
+          factory_id: factory.id,
+          name: productName,
+          size_description: productSize || null,
+          items_per_punch: productPerPunch,
+          unit: 'Pieces',
+        });
+
+        if (error) throw error;
+        toast({ title: "Product added successfully" });
+      }
+      setProductDialog(false);
+      loadProducts();
     } catch (error: any) {
-      toast({ title: "Error deleting brick type", description: error.message, variant: "destructive" });
+      toast({ title: "Error saving product", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteProduct = async (id: string) => {
+    try {
+      const { error } = await supabase.from("product_definitions").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Product deleted" });
+      loadProducts();
+    } catch (error: any) {
+      toast({ title: "Error deleting product", description: error.message, variant: "destructive" });
     }
     setDeleteConfirm(null);
   };
@@ -226,7 +293,7 @@ export const SettingsHub = () => {
   };
 
   const saveMaterial = async () => {
-    if (!materialName.trim() || !materialUnit.trim()) {
+    if (!factory || !materialName.trim() || !materialUnit.trim()) {
       toast({ title: "Please fill all fields", variant: "destructive" });
       return;
     }
@@ -246,6 +313,7 @@ export const SettingsHub = () => {
         toast({ title: "Material updated successfully" });
       } else {
         const { error } = await supabase.from("materials").insert({
+          factory_id: factory.id,
           material_name: materialName,
           unit: materialUnit,
           current_stock_qty: 0,
@@ -278,15 +346,19 @@ export const SettingsHub = () => {
 
   // Save Rates
   const saveRates = async () => {
+    if (!factory) return;
+    
     setIsLoading(true);
     try {
       await supabase
         .from("factory_rates")
         .update({ is_active: false })
+        .eq("factory_id", factory.id)
         .eq("is_active", true);
 
       const { error } = await supabase.from("factory_rates").insert([
         {
+          factory_id: factory.id,
           rate_type: "production_per_punch",
           rate_amount: productionRate,
           brick_type_id: null,
@@ -294,6 +366,7 @@ export const SettingsHub = () => {
           is_active: true,
         },
         {
+          factory_id: factory.id,
           rate_type: "loading_per_brick",
           rate_amount: loadingRate,
           brick_type_id: null,
@@ -312,6 +385,10 @@ export const SettingsHub = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   const menuItems = [
     { id: 'factory-info' as const, label: 'Factory Info', icon: Factory },
     { id: 'brick-types' as const, label: 'Brick Types', icon: Package },
@@ -321,9 +398,15 @@ export const SettingsHub = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Settings className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">Settings Hub ({factoryName})</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Settings className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        </div>
+        <Button variant="outline" onClick={handleLogout} className="text-destructive">
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
       </div>
 
       {/* Navigation Menu */}
@@ -369,8 +452,17 @@ export const SettingsHub = () => {
                 placeholder="Enter factory name"
               />
             </div>
-            <Button onClick={() => toast({ title: "Factory info saved" })}>
-              Save Factory Info
+            <div className="space-y-2">
+              <Label htmlFor="factoryLocation">Location</Label>
+              <Input
+                id="factoryLocation"
+                value={factoryLocation}
+                onChange={(e) => setFactoryLocation(e.target.value)}
+                placeholder="Enter location"
+              />
+            </div>
+            <Button onClick={saveFactory} disabled={isLoading}>
+              {isLoading ? "Saving..." : "Save Factory Info"}
             </Button>
           </CardContent>
         </Card>
@@ -384,35 +476,35 @@ export const SettingsHub = () => {
               <Package className="h-5 w-5" />
               Manage Brick Types
             </CardTitle>
-            <Button onClick={() => openBrickTypeDialog()} className="bg-primary hover:bg-primary/90">
+            <Button onClick={() => openProductDialog()} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
-              Add New Brick Type
+              Add New
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
-            {brickTypes.length === 0 ? (
+            {products.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">No brick types defined. Add your first brick type.</p>
             ) : (
-              brickTypes.map((bt) => (
-                <div key={bt.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              products.map((p) => (
+                <div key={p.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
                   <div>
-                    <p className="font-medium text-foreground">{bt.type_name}</p>
+                    <p className="font-medium text-foreground">{p.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {bt.standard_bricks_per_punch} {bt.unit} per punch
+                      {p.size_description && `${p.size_description} • `}{p.items_per_punch} per punch
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => openBrickTypeDialog(bt)}
+                      onClick={() => openProductDialog(p)}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="destructive"
                       size="icon"
-                      onClick={() => setDeleteConfirm({ type: 'brick', id: bt.id })}
+                      onClick={() => setDeleteConfirm({ type: 'product', id: p.id })}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -434,7 +526,7 @@ export const SettingsHub = () => {
             </CardTitle>
             <Button onClick={() => openMaterialDialog()} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
-              Add New Material
+              Add New
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -519,44 +611,44 @@ export const SettingsHub = () => {
         </Card>
       )}
 
-      {/* Brick Type Dialog */}
-      <Dialog open={brickTypeDialog} onOpenChange={setBrickTypeDialog}>
+      {/* Product Dialog */}
+      <Dialog open={productDialog} onOpenChange={setProductDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingBrickType ? 'Edit Brick Type' : 'Add New Brick Type'}</DialogTitle>
+            <DialogTitle>{editingProduct ? 'Edit Brick Type' : 'Add New Brick Type'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="btName">Brick Type Name</Label>
+              <Label htmlFor="pName">Brick Name</Label>
               <Input
-                id="btName"
-                value={brickTypeName}
-                onChange={(e) => setBrickTypeName(e.target.value)}
-                placeholder="e.g., 4-inch Hollow Brick"
+                id="pName"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="e.g., Solid Block 4 Inch"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="btPerPunch">Bricks Per Punch</Label>
+              <Label htmlFor="pSize">Size Description</Label>
               <Input
-                id="btPerPunch"
+                id="pSize"
+                value={productSize}
+                onChange={(e) => setProductSize(e.target.value)}
+                placeholder="e.g., 4 inch"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pPerPunch">Bricks Per Punch</Label>
+              <Input
+                id="pPerPunch"
                 type="number"
-                value={brickTypePerPunch}
-                onChange={(e) => setBrickTypePerPunch(parseInt(e.target.value) || 0)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="btUnit">Unit</Label>
-              <Input
-                id="btUnit"
-                value={brickTypeUnit}
-                onChange={(e) => setBrickTypeUnit(e.target.value)}
-                placeholder="e.g., pieces"
+                value={productPerPunch}
+                onChange={(e) => setProductPerPunch(parseInt(e.target.value) || 0)}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBrickTypeDialog(false)}>Cancel</Button>
-            <Button onClick={saveBrickType} disabled={isLoading}>
+            <Button variant="outline" onClick={() => setProductDialog(false)}>Cancel</Button>
+            <Button onClick={saveProduct} disabled={isLoading}>
               {isLoading ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
@@ -604,7 +696,7 @@ export const SettingsHub = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this {deleteConfirm?.type === 'brick' ? 'brick type' : 'material'}? 
+              Are you sure you want to delete this {deleteConfirm?.type === 'product' ? 'brick type' : 'material'}? 
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -613,8 +705,8 @@ export const SettingsHub = () => {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                if (deleteConfirm?.type === 'brick') {
-                  deleteBrickType(deleteConfirm.id);
+                if (deleteConfirm?.type === 'product') {
+                  deleteProduct(deleteConfirm.id);
                 } else if (deleteConfirm?.type === 'material') {
                   deleteMaterial(deleteConfirm.id);
                 }

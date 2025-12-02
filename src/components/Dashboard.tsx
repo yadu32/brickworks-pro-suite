@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import heroFactory from '@/assets/hero-factory.jpg';
 import { QuickEntryDialogs } from '@/components/QuickEntryDialogs';
 
 interface QuickActionButtonProps {
@@ -11,10 +10,10 @@ interface QuickActionButtonProps {
   onClick: () => void;
 }
 
-interface BrickType {
+interface ProductDefinition {
   id: string;
-  type_name: string;
-  standard_bricks_per_punch: number;
+  name: string;
+  items_per_punch: number | null;
 }
 
 interface Material {
@@ -44,51 +43,88 @@ const Dashboard = () => {
   const [quickEntryType, setQuickEntryType] = useState<'sale' | 'production' | 'usage' | 'payment' | null>(null);
   const [brickStocks, setBrickStocks] = useState<BrickStock[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [factoryId, setFactoryId] = useState<string | null>(null);
   const [salesMetrics, setSalesMetrics] = useState({
     monthlyRevenue: 0,
     outstandingReceivables: 0
   });
   const [weeklyPayments, setWeeklyPayments] = useState(0);
 
+  const loadFactory = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('factories')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+
+    if (data) {
+      setFactoryId(data.id);
+    }
+  };
+
   const loadDashboardData = async () => {
+    if (!factoryId) return;
+    
     try {
-      const today = new Date().toISOString().split('T')[0];
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Get all brick types dynamically
-      const { data: brickTypes } = await supabase.from('brick_types').select('*').eq('is_active', true);
+      // Get all product definitions (brick types) for this factory
+      const { data: products } = await supabase
+        .from('product_definitions')
+        .select('*')
+        .eq('factory_id', factoryId);
 
-      // Get all production
-      const { data: allProd } = await supabase.from('bricks_production').select('*');
+      // Get all production for this factory
+      const { data: allProd } = await supabase
+        .from('production_logs')
+        .select('*')
+        .eq('factory_id', factoryId);
 
-      // Get all sales
-      const { data: allSales } = await supabase.from('sales').select('*');
+      // Get all sales for this factory
+      const { data: allSales } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('factory_id', factoryId);
 
-      // Calculate stock for each brick type
-      const stocks: BrickStock[] = (brickTypes || []).map(bt => {
-        const produced = allProd?.filter(p => p.brick_type_id === bt.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
-        const sold = allSales?.filter(s => s.product_id === bt.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
+      // Calculate stock for each product type
+      const stocks: BrickStock[] = (products || []).map(p => {
+        const produced = allProd?.filter(prod => prod.product_id === p.id).reduce((sum, prod) => sum + prod.quantity, 0) || 0;
+        const sold = allSales?.filter(s => s.product_id === p.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
         return {
-          id: bt.id,
-          name: bt.type_name,
+          id: p.id,
+          name: p.name,
           stock: produced - sold
         };
       });
       setBrickStocks(stocks);
 
       // Sales metrics
-      const { data: monthlySales } = await supabase.from('sales').select('*').gte('date', startOfMonth);
+      const { data: monthlySales } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('factory_id', factoryId)
+        .gte('date', startOfMonth);
       const monthlyRevenue = monthlySales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
       const outstandingReceivables = allSales?.reduce((sum, s) => sum + s.balance_due, 0) || 0;
       setSalesMetrics({ monthlyRevenue, outstandingReceivables });
 
-      // Materials - load all dynamically
-      const { data: materialsData } = await supabase.from('materials').select('*');
+      // Materials - load all for this factory
+      const { data: materialsData } = await supabase
+        .from('materials')
+        .select('*')
+        .eq('factory_id', factoryId);
       setMaterials(materialsData || []);
 
       // Employee payments
-      const { data: weeklyPaymentsData } = await supabase.from('employee_payments').select('*').gte('date', weekAgo);
+      const { data: weeklyPaymentsData } = await supabase
+        .from('employee_payments')
+        .select('*')
+        .eq('factory_id', factoryId)
+        .gte('date', weekAgo);
       const weeklyTotal = weeklyPaymentsData?.reduce((sum, p) => sum + p.amount, 0) || 0;
       setWeeklyPayments(weeklyTotal);
     } catch (error) {
@@ -97,8 +133,14 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    loadDashboardData();
+    loadFactory();
   }, []);
+
+  useEffect(() => {
+    if (factoryId) {
+      loadDashboardData();
+    }
+  }, [factoryId]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
