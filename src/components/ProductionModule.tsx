@@ -8,90 +8,113 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface ProductDefinition {
+  id: string;
+  name: string;
+  unit: string;
+  items_per_punch: number | null;
+  size_description: string | null;
+  factory_id: string;
+}
+
 interface ProductionRecord {
   id: string;
   date: string;
-  brick_type_id: string;
-  brickTypeName: string;
-  number_of_punches: number;
-  actual_bricks_produced: number;
+  product_id: string;
+  product_name: string;
+  punches: number;
+  quantity: number;
   remarks: string;
-  efficiency: number;
+  factory_id: string;
 }
 
 const ProductionModule = () => {
   const { toast } = useToast();
   const [productionRecords, setProductionRecords] = useState<ProductionRecord[]>([]);
-  const [brickTypes, setBrickTypes] = useState<any[]>([]);
+  const [productTypes, setProductTypes] = useState<ProductDefinition[]>([]);
+  const [factoryId, setFactoryId] = useState<string | null>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ProductionRecord | null>(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    brick_type_id: '',
-    number_of_punches: '',
-    actual_bricks_produced: '',
+    product_id: '',
+    punches: '',
+    quantity: '',
     remarks: ''
   });
 
   useEffect(() => {
-    loadBrickTypes();
-    loadProductionRecords();
+    loadFactoryId();
   }, []);
 
-  const loadBrickTypes = async () => {
+  useEffect(() => {
+    if (factoryId) {
+      loadProductTypes();
+      loadProductionRecords();
+    }
+  }, [factoryId]);
+
+  const loadFactoryId = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: factory } = await supabase
+      .from('factories')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+    
+    if (factory) {
+      setFactoryId(factory.id);
+    }
+  };
+
+  const loadProductTypes = async () => {
+    if (!factoryId) return;
+    
     try {
-      const { data, error } = await supabase.from('brick_types').select('*').eq('is_active', true);
+      const { data, error } = await supabase
+        .from('product_definitions')
+        .select('*')
+        .eq('factory_id', factoryId);
+      
       if (error) throw error;
-      setBrickTypes(data || []);
-      if (data && data.length > 0) {
-        setFormData(prev => ({ ...prev, brick_type_id: data[0].id }));
+      setProductTypes(data || []);
+      if (data && data.length > 0 && !formData.product_id) {
+        setFormData(prev => ({ ...prev, product_id: data[0].id }));
       }
     } catch (error) {
-      console.error('Error loading brick types:', error);
-      toast({ title: "Error", description: "Failed to load brick types", variant: "destructive" });
+      console.error('Error loading product types:', error);
+      toast({ title: "Error", description: "Failed to load product types", variant: "destructive" });
     }
   };
 
   const loadProductionRecords = async () => {
+    if (!factoryId) return;
+    
     try {
       const { data, error } = await supabase
-        .from('bricks_production')
-        .select(`
-          *,
-          brick_types (
-            id,
-            type_name,
-            standard_bricks_per_punch
-          )
-        `)
+        .from('production_logs')
+        .select('*')
+        .eq('factory_id', factoryId)
         .order('date', { ascending: false });
       
       if (error) throw error;
-      
-      const formattedRecords = data?.map(record => ({
-        id: record.id,
-        date: record.date,
-        brick_type_id: record.brick_type_id,
-        brickTypeName: record.brick_types?.type_name || '',
-        number_of_punches: record.number_of_punches,
-        actual_bricks_produced: record.actual_bricks_produced,
-        remarks: record.remarks || '',
-        efficiency: record.brick_types?.standard_bricks_per_punch 
-          ? (record.actual_bricks_produced / (record.number_of_punches * record.brick_types.standard_bricks_per_punch)) * 100
-          : 0
-      })) || [];
-      
-      setProductionRecords(formattedRecords);
+      setProductionRecords(data || []);
     } catch (error) {
       console.error('Error loading production records:', error);
       toast({ title: "Error", description: "Failed to load production records", variant: "destructive" });
     }
   };
 
-  const calculateExpected = (punches: number, brickTypeId: string) => {
-    const brickType = brickTypes.find(bt => bt.id === brickTypeId);
-    return brickType ? punches * brickType.standard_bricks_per_punch : 0;
+  const getProductType = (productId: string) => {
+    return productTypes.find(pt => pt.id === productId);
+  };
+
+  const calculateExpected = (punches: number, productId: string) => {
+    const productType = getProductType(productId);
+    return productType?.items_per_punch ? punches * productType.items_per_punch : 0;
   };
 
   const calculateEfficiency = (actual: number, expected: number) => {
@@ -100,19 +123,24 @@ const ProductionModule = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) return;
+    
+    const productType = getProductType(formData.product_id);
     
     try {
       const productionData = {
         date: formData.date,
-        brick_type_id: formData.brick_type_id,
-        number_of_punches: parseInt(formData.number_of_punches),
-        actual_bricks_produced: parseInt(formData.actual_bricks_produced),
-        remarks: formData.remarks
+        product_id: formData.product_id,
+        product_name: productType?.name || '',
+        punches: parseInt(formData.punches),
+        quantity: parseInt(formData.quantity),
+        remarks: formData.remarks,
+        factory_id: factoryId
       };
 
       if (editingRecord) {
         const { error } = await supabase
-          .from('bricks_production')
+          .from('production_logs')
           .update(productionData)
           .eq('id', editingRecord.id);
         
@@ -120,7 +148,7 @@ const ProductionModule = () => {
         toast({ title: "Success", description: "Production record updated successfully" });
       } else {
         const { error } = await supabase
-          .from('bricks_production')
+          .from('production_logs')
           .insert([productionData]);
         
         if (error) throw error;
@@ -138,9 +166,9 @@ const ProductionModule = () => {
   const resetForm = () => {
     setFormData({
       date: new Date().toISOString().split('T')[0],
-      brick_type_id: brickTypes.length > 0 ? brickTypes[0].id : '',
-      number_of_punches: '',
-      actual_bricks_produced: '',
+      product_id: productTypes.length > 0 ? productTypes[0].id : '',
+      punches: '',
+      quantity: '',
       remarks: ''
     });
     setEditingRecord(null);
@@ -150,11 +178,11 @@ const ProductionModule = () => {
   const handleEdit = (record: ProductionRecord) => {
     setEditingRecord(record);
     setFormData({
-      date: record.date,
-      brick_type_id: record.brick_type_id,
-      number_of_punches: record.number_of_punches.toString(),
-      actual_bricks_produced: record.actual_bricks_produced.toString(),
-      remarks: record.remarks
+      date: record.date || new Date().toISOString().split('T')[0],
+      product_id: record.product_id,
+      punches: record.punches?.toString() || '',
+      quantity: record.quantity.toString(),
+      remarks: record.remarks || ''
     });
     setIsDialogOpen(true);
   };
@@ -166,7 +194,7 @@ const ProductionModule = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from('bricks_production').delete().eq('id', id);
+      const { error } = await supabase.from('production_logs').delete().eq('id', id);
       if (error) throw error;
       
       toast({ title: "Success", description: "Production record deleted successfully" });
@@ -178,12 +206,16 @@ const ProductionModule = () => {
     setDeleteDialogState({open: false, id: ''});
   };
 
-  const expectedBricks = formData.number_of_punches && formData.brick_type_id ? 
-    calculateExpected(parseInt(formData.number_of_punches), formData.brick_type_id) : 0;
+  const expectedBricks = formData.punches && formData.product_id ? 
+    calculateExpected(parseInt(formData.punches), formData.product_id) : 0;
 
-  // Calculate totals
-  const fourInchType = brickTypes.find(bt => bt.type_name.toLowerCase().includes('4-inch') || bt.type_name.toLowerCase().includes('4 inch'));
-  const sixInchType = brickTypes.find(bt => bt.type_name.toLowerCase().includes('6-inch') || bt.type_name.toLowerCase().includes('6 inch'));
+  // Calculate totals per product type
+  const productionByType = productTypes.map(pt => ({
+    ...pt,
+    totalProduced: productionRecords
+      .filter(r => r.product_id === pt.id)
+      .reduce((sum, r) => sum + r.quantity, 0)
+  }));
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -192,7 +224,7 @@ const ProductionModule = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Production Management</h1>
-            <p className="text-muted-foreground">Track and manage brick production efficiency</p>
+            <p className="text-muted-foreground">Track and manage production efficiency</p>
           </div>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -222,19 +254,25 @@ const ProductionModule = () => {
                 </div>
 
                 <div>
-                  <label className="text-label">Brick Type</label>
-                  <Select value={formData.brick_type_id} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, brick_type_id: value }))
+                  <label className="text-label">Product Type</label>
+                  <Select value={formData.product_id} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, product_id: value }))
                   }>
                     <SelectTrigger className="input-dark">
-                      <SelectValue />
+                      <SelectValue placeholder="Select product type" />
                     </SelectTrigger>
                     <SelectContent className="card-dark">
-                      {brickTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.type_name} ({type.standard_bricks_per_punch} per punch)
+                      {productTypes.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          No products defined. Add in Settings.
                         </SelectItem>
-                      ))}
+                      ) : (
+                        productTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name} {type.items_per_punch && `(${type.items_per_punch} per punch)`}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -243,33 +281,33 @@ const ProductionModule = () => {
                   <label className="text-label">Number of Punches</label>
                   <Input
                     type="number"
-                    value={formData.number_of_punches}
-                    onChange={(e) => setFormData(prev => ({ ...prev, number_of_punches: e.target.value }))}
+                    value={formData.punches}
+                    onChange={(e) => setFormData(prev => ({ ...prev, punches: e.target.value }))}
                     className="input-dark"
                     min="1"
                     required
                   />
                   {expectedBricks > 0 && (
-                    <p className="text-secondary mt-1">Expected Bricks: {expectedBricks}</p>
+                    <p className="text-secondary mt-1">Expected: {expectedBricks}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-label">Actual Bricks Produced</label>
+                  <label className="text-label">Actual Quantity Produced</label>
                   <Input
                     type="number"
-                    value={formData.actual_bricks_produced}
-                    onChange={(e) => setFormData(prev => ({ ...prev, actual_bricks_produced: e.target.value }))}
+                    value={formData.quantity}
+                    onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
                     className="input-dark"
                     min="0"
                     required
                   />
-                  {formData.actual_bricks_produced && expectedBricks > 0 && (
+                  {formData.quantity && expectedBricks > 0 && (
                     <p className={`mt-1 font-medium ${
-                      calculateEfficiency(parseInt(formData.actual_bricks_produced), expectedBricks) >= 95 ? 'text-success' :
-                      calculateEfficiency(parseInt(formData.actual_bricks_produced), expectedBricks) >= 85 ? 'text-warning' : 'text-destructive'
+                      calculateEfficiency(parseInt(formData.quantity), expectedBricks) >= 95 ? 'text-success' :
+                      calculateEfficiency(parseInt(formData.quantity), expectedBricks) >= 85 ? 'text-warning' : 'text-destructive'
                     }`}>
-                      Efficiency %: {calculateEfficiency(parseInt(formData.actual_bricks_produced), expectedBricks).toFixed(1)}%
+                      Efficiency: {calculateEfficiency(parseInt(formData.quantity), expectedBricks).toFixed(1)}%
                     </p>
                   )}
                 </div>
@@ -285,7 +323,7 @@ const ProductionModule = () => {
                 </div>
 
                 <div className="flex space-x-3 pt-4">
-                  <Button type="submit" className="btn-orange flex-1">
+                  <Button type="submit" className="btn-orange flex-1" disabled={!formData.product_id}>
                     {editingRecord ? 'Update' : 'Add'} Record
                   </Button>
                   <Button type="button" onClick={resetForm} variant="secondary" className="flex-1">
@@ -297,29 +335,27 @@ const ProductionModule = () => {
           </Dialog>
         </div>
 
-        {/* All-Time Summary */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="card-metric">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-secondary">Total 4-inch Production</p>
-                <p className="text-metric text-primary">{productionRecords.filter(r => r.brick_type_id === fourInchType?.id).reduce((sum, r) => sum + r.actual_bricks_produced, 0).toLocaleString()}</p>
-                <p className="text-secondary">pieces</p>
-              </div>
-              <Factory className="h-12 w-12 text-primary" />
+        {/* Production Summary by Type */}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {productionByType.length === 0 ? (
+            <div className="col-span-full card-dark p-8 text-center">
+              <Factory className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No product types defined yet. Add them in Settings.</p>
             </div>
-          </div>
-          
-          <div className="card-metric">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-secondary">Total 6-inch Production</p>
-                <p className="text-metric text-success">{productionRecords.filter(r => r.brick_type_id === sixInchType?.id).reduce((sum, r) => sum + r.actual_bricks_produced, 0).toLocaleString()}</p>
-                <p className="text-secondary">pieces</p>
+          ) : (
+            productionByType.map((pt, index) => (
+              <div key={pt.id} className="card-metric">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-secondary">{pt.name}</p>
+                    <p className="text-metric text-primary">{pt.totalProduced.toLocaleString()}</p>
+                    <p className="text-secondary">{pt.unit}</p>
+                  </div>
+                  <Factory className={`h-12 w-12 ${index % 2 === 0 ? 'text-primary' : 'text-success'}`} />
+                </div>
               </div>
-              <Factory className="h-12 w-12 text-success" />
-            </div>
-          </div>
+            ))
+          )}
         </section>
 
         {/* Production Records */}
@@ -333,72 +369,76 @@ const ProductionModule = () => {
                 <p className="text-muted-foreground">No production records yet</p>
               </div>
             ) : (
-              productionRecords.map((record) => (
-                <div key={record.id} className="card-dark p-4 border border-border">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center space-x-3">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-foreground font-medium">{record.date}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          record.brickTypeName.includes('4-inch') 
-                            ? 'bg-primary/20 text-primary border border-primary/30'
-                            : 'bg-success/20 text-success border border-success/30'
-                        }`}>
-                          {record.brickTypeName}
-                        </span>
+              productionRecords.map((record) => {
+                const productType = getProductType(record.product_id);
+                const expected = productType?.items_per_punch 
+                  ? (record.punches || 0) * productType.items_per_punch 
+                  : 0;
+                const efficiency = expected > 0 ? (record.quantity / expected) * 100 : 0;
+                
+                return (
+                  <div key={record.id} className="card-dark p-4 border border-border">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center space-x-3">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-foreground font-medium">{record.date}</span>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary border border-primary/30">
+                            {record.product_name}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-secondary">Punches</p>
+                            <p className="text-foreground font-medium">{record.punches || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-secondary">Expected</p>
+                            <p className="text-foreground font-medium">{expected || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-secondary">Actual</p>
+                            <p className="text-foreground font-medium">{record.quantity}</p>
+                          </div>
+                          <div>
+                            <p className="text-secondary">Efficiency</p>
+                            <p className={`font-medium ${
+                              efficiency >= 95 ? 'text-success' : 
+                              efficiency >= 85 ? 'text-warning' : 'text-destructive'
+                            }`}>
+                              {expected > 0 ? `${efficiency.toFixed(1)}%` : '-'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {record.remarks && (
+                          <p className="text-secondary text-sm mt-2">{record.remarks}</p>
+                        )}
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-secondary">Punches</p>
-                          <p className="text-foreground font-medium">{record.number_of_punches}</p>
-                        </div>
-                        <div>
-                          <p className="text-secondary">Expected</p>
-                          <p className="text-foreground font-medium">{calculateExpected(record.number_of_punches, record.brick_type_id)}</p>
-                        </div>
-                        <div>
-                          <p className="text-secondary">Actual</p>
-                          <p className="text-foreground font-medium">{record.actual_bricks_produced}</p>
-                        </div>
-                        <div>
-                          <p className="text-secondary">Efficiency</p>
-                          <p className={`font-medium ${
-                            record.efficiency >= 95 ? 'text-success' : 
-                            record.efficiency >= 85 ? 'text-warning' : 'text-destructive'
-                          }`}>
-                            {record.efficiency.toFixed(1)}%
-                          </p>
-                        </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(record)}
+                          className="hover:bg-primary/20"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDeleteDialogState({open: true, id: record.id})}
+                          className="hover:bg-destructive/20 text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      
-                      {record.remarks && (
-                        <p className="text-secondary text-sm mt-2">{record.remarks}</p>
-                      )}
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(record)}
-                        className="hover:bg-primary/20"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDeleteDialogState({open: true, id: record.id})}
-                        className="hover:bg-destructive/20 text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>

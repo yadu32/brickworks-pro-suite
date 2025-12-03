@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, TrendingDown, AlertTriangle, Fuel, Calendar } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, TrendingDown, AlertTriangle, Fuel, Calendar, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,7 @@ interface Material {
   current_stock_qty: number;
   unit: string;
   average_cost_per_unit: number;
+  factory_id: string;
 }
 
 interface MaterialPurchase {
@@ -30,6 +31,7 @@ interface MaterialPurchase {
   supplier_phone: string;
   payment_made: number;
   notes: string;
+  factory_id: string;
   materials: {
     id: string;
     material_name: string;
@@ -43,6 +45,7 @@ interface MaterialUsage {
   material_id: string;
   quantity_used: number;
   purpose: string;
+  factory_id: string;
   materials: {
     id: string;
     material_name: string;
@@ -60,6 +63,14 @@ const MaterialsModule = () => {
   const [editingUsage, setEditingUsage] = useState<MaterialUsage | null>(null);
   const [isAddSupplierDialogOpen, setIsAddSupplierDialogOpen] = useState(false);
   const [supplierOptions, setSupplierOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [factoryId, setFactoryId] = useState<string | null>(null);
+  
+  // Pay Supplier Modal state
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [selectedPurchase, setSelectedPurchase] = useState<MaterialPurchase | null>(null);
+  const [totalSupplierDebt, setTotalSupplierDebt] = useState(0);
+  const [payAmount, setPayAmount] = useState('');
+  
   const { toast } = useToast();
 
   const [purchaseForm, setPurchaseForm] = useState({
@@ -88,10 +99,28 @@ const MaterialsModule = () => {
     }).format(amount);
   };
 
+  const loadFactoryId = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: factory } = await supabase
+      .from('factories')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+    
+    if (factory) {
+      setFactoryId(factory.id);
+    }
+  };
+
   const loadMaterials = async () => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
       .from('materials')
       .select('*')
+      .eq('factory_id', factoryId)
       .order('material_name');
     
     if (error) {
@@ -102,6 +131,8 @@ const MaterialsModule = () => {
   };
 
   const loadPurchases = async () => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
       .from('material_purchases')
       .select(`
@@ -112,6 +143,7 @@ const MaterialsModule = () => {
           unit
         )
       `)
+      .eq('factory_id', factoryId)
       .order('date', { ascending: false });
     
     if (error) {
@@ -122,6 +154,8 @@ const MaterialsModule = () => {
   };
 
   const loadUsage = async () => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
       .from('material_usage')
       .select(`
@@ -132,6 +166,7 @@ const MaterialsModule = () => {
           unit
         )
       `)
+      .eq('factory_id', factoryId)
       .order('date', { ascending: false });
     
     if (error) {
@@ -142,36 +177,40 @@ const MaterialsModule = () => {
   };
 
   const loadSuppliers = async () => {
+    if (!factoryId) return;
+    
     const { data } = await supabase
-      .from('material_purchases')
-      .select('supplier_name, supplier_phone')
-      .order('supplier_name');
+      .from('suppliers')
+      .select('name, contact_number')
+      .eq('factory_id', factoryId)
+      .order('name');
     
     if (data) {
-      const uniqueSuppliers = Array.from(
-        new Map(data.map(item => [item.supplier_name, item])).values()
-      );
       setSupplierOptions(
-        uniqueSuppliers.map(s => ({
-          value: s.supplier_name,
-          label: s.supplier_name
+        data.map(s => ({
+          value: s.name,
+          label: s.name
         }))
       );
     }
   };
 
   const updateMaterialStock = async (materialId: string) => {
+    if (!factoryId) return;
+    
     // Calculate total purchases
     const { data: purchaseData } = await supabase
       .from('material_purchases')
       .select('quantity_purchased, unit_cost')
-      .eq('material_id', materialId);
+      .eq('material_id', materialId)
+      .eq('factory_id', factoryId);
 
     // Calculate total usage
     const { data: usageData } = await supabase
       .from('material_usage')
       .select('quantity_used')
-      .eq('material_id', materialId);
+      .eq('material_id', materialId)
+      .eq('factory_id', factoryId);
 
     const totalPurchased = purchaseData?.reduce((sum, p) => sum + Number(p.quantity_purchased), 0) || 0;
     const totalUsed = usageData?.reduce((sum, u) => sum + Number(u.quantity_used), 0) || 0;
@@ -190,8 +229,14 @@ const MaterialsModule = () => {
       .eq('id', materialId);
   };
 
+  const calculateBalance = (purchase: MaterialPurchase) => {
+    const totalCost = Number(purchase.quantity_purchased) * Number(purchase.unit_cost);
+    return totalCost - Number(purchase.payment_made);
+  };
+
   const handlePurchaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) return;
     
     const purchaseData = {
       date: purchaseForm.date,
@@ -200,8 +245,9 @@ const MaterialsModule = () => {
       unit_cost: Number(purchaseForm.unit_cost),
       supplier_name: purchaseForm.supplier_name,
       supplier_phone: purchaseForm.supplier_phone,
-      payment_made: Number(purchaseForm.payment_made),
-      notes: purchaseForm.notes
+      payment_made: Number(purchaseForm.payment_made) || 0,
+      notes: purchaseForm.notes,
+      factory_id: factoryId
     };
 
     if (editingPurchase) {
@@ -247,12 +293,14 @@ const MaterialsModule = () => {
 
   const handleUsageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) return;
     
     const usageData = {
       date: usageForm.date,
       material_id: usageForm.material_id,
       quantity_used: Number(usageForm.quantity_used),
-      purpose: usageForm.purpose
+      purpose: usageForm.purpose,
+      factory_id: factoryId
     };
 
     if (editingUsage) {
@@ -359,16 +407,60 @@ const MaterialsModule = () => {
     setIsUsageDialogOpen(true);
   };
 
+  // Pay Supplier Modal functions
+  const openPayModal = async (purchase: MaterialPurchase) => {
+    setSelectedPurchase(purchase);
+    const balance = calculateBalance(purchase);
+    setPayAmount(balance.toString());
+    
+    // Calculate total debt to this supplier
+    const supplierPurchases = purchases.filter(p => p.supplier_name === purchase.supplier_name);
+    const totalDebt = supplierPurchases.reduce((sum, p) => sum + calculateBalance(p), 0);
+    setTotalSupplierDebt(totalDebt);
+    
+    setIsPayModalOpen(true);
+  };
+
+  const handlePaySupplier = async () => {
+    if (!selectedPurchase || !payAmount) return;
+    
+    const paymentAmount = Number(payAmount);
+    if (paymentAmount <= 0) {
+      toast({ title: 'Invalid payment amount', variant: 'destructive' });
+      return;
+    }
+
+    const newPaymentMade = Number(selectedPurchase.payment_made) + paymentAmount;
+    
+    const { error } = await supabase
+      .from('material_purchases')
+      .update({ payment_made: newPaymentMade })
+      .eq('id', selectedPurchase.id);
+    
+    if (error) {
+      toast({ title: 'Error recording payment', description: error.message, variant: 'destructive' });
+      return;
+    }
+    
+    await loadPurchases();
+    setIsPayModalOpen(false);
+    setSelectedPurchase(null);
+    setPayAmount('');
+    toast({ title: 'Payment recorded successfully' });
+  };
+
   useEffect(() => {
-    loadMaterials();
-    loadPurchases();
-    loadUsage();
-    loadSuppliers();
+    loadFactoryId();
   }, []);
 
   useEffect(() => {
-    loadSuppliers();
-  }, [purchases]);
+    if (factoryId) {
+      loadMaterials();
+      loadPurchases();
+      loadUsage();
+      loadSuppliers();
+    }
+  }, [factoryId]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -441,6 +533,11 @@ const MaterialsModule = () => {
                       />
                     </div>
                   </div>
+                  {purchaseForm.quantity_purchased && purchaseForm.unit_cost && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">Total Cost: {formatCurrency(Number(purchaseForm.quantity_purchased) * Number(purchaseForm.unit_cost))}</p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="supplier">Supplier Name</Label>
@@ -448,10 +545,6 @@ const MaterialsModule = () => {
                         value={purchaseForm.supplier_name}
                         onValueChange={(value) => {
                           setPurchaseForm({...purchaseForm, supplier_name: value});
-                          const supplier = purchases.find(p => p.supplier_name === value);
-                          if (supplier && supplier.supplier_phone) {
-                            setPurchaseForm({...purchaseForm, supplier_name: value, supplier_phone: supplier.supplier_phone});
-                          }
                         }}
                         options={supplierOptions}
                         placeholder="Select supplier"
@@ -470,15 +563,22 @@ const MaterialsModule = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="payment">Payment Made (₹)</Label>
+                    <Label htmlFor="payment">Amount Paid (₹)</Label>
                     <Input
                       id="payment"
                       type="number"
                       step="0.01"
                       value={purchaseForm.payment_made}
                       onChange={(e) => setPurchaseForm({...purchaseForm, payment_made: e.target.value})}
-                      required
+                      placeholder="0"
                     />
+                    {purchaseForm.quantity_purchased && purchaseForm.unit_cost && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Balance Due: {formatCurrency(
+                          (Number(purchaseForm.quantity_purchased) * Number(purchaseForm.unit_cost)) - (Number(purchaseForm.payment_made) || 0)
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="notes">Notes</Label>
@@ -553,7 +653,7 @@ const MaterialsModule = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="purpose">Purpose</Label>
+                    <Label htmlFor="purpose">Reason for Use</Label>
                     <Input
                       id="purpose"
                       value={usageForm.purpose}
@@ -598,31 +698,98 @@ const MaterialsModule = () => {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Pay Supplier Modal */}
+        <Dialog open={isPayModalOpen} onOpenChange={setIsPayModalOpen}>
+          <DialogContent className="modal-content">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Pay Supplier</DialogTitle>
+            </DialogHeader>
+            {selectedPurchase && (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Supplier</p>
+                    <p className="text-lg font-semibold text-foreground">{selectedPurchase.supplier_name}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+                      <p className="text-sm text-muted-foreground mb-1">Due for this Bill</p>
+                      <p className="text-xl font-bold text-destructive">{formatCurrency(calculateBalance(selectedPurchase))}</p>
+                    </div>
+                    <div className="p-4 bg-warning/10 rounded-lg border border-warning/20">
+                      <p className="text-sm text-muted-foreground mb-1">Total Supplier Debt</p>
+                      <p className="text-xl font-bold text-warning">{formatCurrency(totalSupplierDebt)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground">
+                    <p>Material: {selectedPurchase.materials.material_name}</p>
+                    <p>Purchase Date: {new Date(selectedPurchase.date).toLocaleDateString('en-IN')}</p>
+                    <p>Total Bill: {formatCurrency(selectedPurchase.quantity_purchased * selectedPurchase.unit_cost)}</p>
+                    <p>Already Paid: {formatCurrency(selectedPurchase.payment_made)}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="payAmount">Amount to Pay (₹)</Label>
+                  <Input
+                    id="payAmount"
+                    type="number"
+                    step="0.01"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                
+                <div className="flex justify-end gap-4">
+                  <Button type="button" variant="outline" onClick={() => setIsPayModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handlePaySupplier} className="btn-primary">
+                    Submit Payment
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Material Stock Overview */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Current Stock</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {materials.map((material) => (
-              <div key={material.id} className="card-metric">
-                <div className="text-center">
-                  {material.material_name === 'Cement' && <Package className="h-8 w-8 text-primary mx-auto mb-2" />}
-                  {material.material_name === 'Dust' && <Package className="h-8 w-8 text-secondary mx-auto mb-2" />}
-                  {material.material_name === 'Diesel' && <Fuel className="h-8 w-8 text-warning mx-auto mb-2" />}
-                  <p className="text-secondary">{material.material_name}</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {material.current_stock_qty.toLocaleString()} {material.unit}
-                  </p>
-                  <p className="text-secondary">{formatCurrency(material.current_stock_qty * material.average_cost_per_unit)}</p>
-                  {material.current_stock_qty < 10 && (
-                    <div className="flex items-center justify-center mt-2 text-warning">
-                      <AlertTriangle className="h-4 w-4 mr-1" />
-                      <span className="text-sm">Low Stock</span>
-                    </div>
-                  )}
+          {materials.length === 0 ? (
+            <div className="card-dark p-8 text-center">
+              <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No materials defined yet. Add materials in Settings.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {materials.map((material) => (
+                <div key={material.id} className="card-metric">
+                  <div className="text-center">
+                    {material.material_name.toLowerCase().includes('diesel') ? (
+                      <Fuel className="h-8 w-8 text-warning mx-auto mb-2" />
+                    ) : (
+                      <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                    )}
+                    <p className="text-secondary">{material.material_name}</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {material.current_stock_qty.toLocaleString()} {material.unit}
+                    </p>
+                    <p className="text-secondary">{formatCurrency(material.current_stock_qty * material.average_cost_per_unit)}</p>
+                    {material.current_stock_qty <= 0 && (
+                      <div className="flex items-center justify-center mt-2 text-warning">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        <span className="text-sm">Out of Stock</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Recent Purchases with Scrollable Table */}
@@ -637,65 +804,90 @@ const MaterialsModule = () => {
                     <th className="text-left py-3 px-4 text-secondary bg-card">Material & Qty</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Supplier</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Total Cost</th>
-                    <th className="text-left py-3 px-4 text-secondary bg-card">Balance</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Status</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {purchases.map((purchase) => (
-                    <tr key={purchase.id} className="border-b border-border hover:bg-accent/5">
-                      <td className="py-3 px-4 text-foreground">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-2 text-secondary" />
-                          {new Date(purchase.date).toLocaleDateString('en-IN')}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        <div>
-                          <p className="font-medium">{purchase.materials.material_name}</p>
-                          <p className="text-sm text-secondary">{purchase.quantity_purchased} {purchase.materials.unit}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        <div>
-                          <p>{purchase.supplier_name}</p>
-                          {purchase.supplier_phone && (
-                            <p className="text-sm text-secondary">{purchase.supplier_phone}</p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {formatCurrency(purchase.quantity_purchased * purchase.unit_cost)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`text-sm px-2 py-1 rounded ${
-                          (purchase.quantity_purchased * purchase.unit_cost) - purchase.payment_made > 0 
-                            ? 'bg-warning/20 text-warning' 
-                            : 'bg-success/20 text-success'
-                        }`}>
-                          {formatCurrency((purchase.quantity_purchased * purchase.unit_cost) - purchase.payment_made)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => editPurchase(purchase)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => setDeleteDialogState({open: true, id: purchase.id, materialId: purchase.material_id, type: 'purchase'})}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  {purchases.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                        No purchases yet
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    purchases.map((purchase) => {
+                      const balance = calculateBalance(purchase);
+                      const isPaid = balance <= 0;
+                      
+                      return (
+                        <tr key={purchase.id} className="border-b border-border hover:bg-accent/5">
+                          <td className="py-3 px-4 text-foreground">
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-2 text-secondary" />
+                              {new Date(purchase.date).toLocaleDateString('en-IN')}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-foreground">
+                            <div>
+                              <p className="font-medium">{purchase.materials.material_name}</p>
+                              <p className="text-sm text-secondary">{purchase.quantity_purchased} {purchase.materials.unit}</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-foreground">
+                            <div>
+                              <p>{purchase.supplier_name}</p>
+                              {purchase.supplier_phone && (
+                                <p className="text-sm text-secondary">{purchase.supplier_phone}</p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-foreground">
+                            {formatCurrency(purchase.quantity_purchased * purchase.unit_cost)}
+                          </td>
+                          <td className="py-3 px-4">
+                            {isPaid ? (
+                              <span className="text-sm px-3 py-1 rounded-full bg-success/20 text-success font-medium">
+                                Paid
+                              </span>
+                            ) : (
+                              <span className="text-sm px-3 py-1 rounded-full bg-destructive/20 text-destructive font-medium">
+                                Due: {formatCurrency(balance)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex gap-2">
+                              {!isPaid && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => openPayModal(purchase)}
+                                  className="text-success hover:bg-success/20"
+                                >
+                                  <Wallet className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => editPurchase(purchase)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => setDeleteDialogState({open: true, id: purchase.id, materialId: purchase.material_id, type: 'purchase'})}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -712,48 +904,56 @@ const MaterialsModule = () => {
                   <tr>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Date</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Material & Qty</th>
-                    <th className="text-left py-3 px-4 text-secondary bg-card">Purpose</th>
+                    <th className="text-left py-3 px-4 text-secondary bg-card">Reason</th>
                     <th className="text-left py-3 px-4 text-secondary bg-card">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usage.map((usageItem) => (
-                    <tr key={usageItem.id} className="border-b border-border hover:bg-accent/5">
-                      <td className="py-3 px-4 text-foreground">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-2 text-secondary" />
-                          {new Date(usageItem.date).toLocaleDateString('en-IN')}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        <div>
-                          <p className="font-medium">{usageItem.materials.material_name}</p>
-                          <p className="text-sm text-secondary">{usageItem.quantity_used} {usageItem.materials.unit}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {usageItem.purpose}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => editUsage(usageItem)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => setDeleteDialogState({open: true, id: usageItem.id, materialId: usageItem.material_id, type: 'usage'})}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  {usage.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                        No usage records yet
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    usage.map((usageItem) => (
+                      <tr key={usageItem.id} className="border-b border-border hover:bg-accent/5">
+                        <td className="py-3 px-4 text-foreground">
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-2 text-secondary" />
+                            {new Date(usageItem.date).toLocaleDateString('en-IN')}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-foreground">
+                          <div>
+                            <p className="font-medium">{usageItem.materials.material_name}</p>
+                            <p className="text-sm text-secondary">{usageItem.quantity_used} {usageItem.materials.unit}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-foreground">
+                          {usageItem.purpose}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => editUsage(usageItem)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={() => setDeleteDialogState({open: true, id: usageItem.id, materialId: usageItem.material_id, type: 'usage'})}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

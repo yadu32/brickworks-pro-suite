@@ -21,12 +21,14 @@ interface OtherExpense {
   vendor_name: string | null;
   receipt_number: string | null;
   notes: string | null;
+  factory_id: string;
 }
 
 const OtherExpensesModule = () => {
   const [expenses, setExpenses] = useState<OtherExpense[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [factoryId, setFactoryId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -55,11 +57,29 @@ const OtherExpensesModule = () => {
     }).format(amount);
   };
 
+  const loadFactoryId = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: factory } = await supabase
+      .from('factories')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+    
+    if (factory) {
+      setFactoryId(factory.id);
+    }
+  };
+
   const loadExpenses = async () => {
+    if (!factoryId) return;
+    
     setLoading(true);
     const { data, error } = await supabase
       .from('other_expenses')
       .select('*')
+      .eq('factory_id', factoryId)
       .order('date', { ascending: false });
 
     if (error) {
@@ -71,11 +91,22 @@ const OtherExpensesModule = () => {
   };
 
   useEffect(() => {
-    loadExpenses();
+    loadFactoryId();
   }, []);
+
+  useEffect(() => {
+    if (factoryId) {
+      loadExpenses();
+    }
+  }, [factoryId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) {
+      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
+      return;
+    }
+    
     setLoading(true);
 
     const { error } = await supabase.from('other_expenses').insert([{
@@ -85,7 +116,8 @@ const OtherExpensesModule = () => {
       amount: parseFloat(formData.amount),
       vendor_name: formData.vendor_name || null,
       receipt_number: formData.receipt_number || null,
-      notes: formData.notes || null
+      notes: formData.notes || null,
+      factory_id: factoryId
     }]);
 
     if (error) {
@@ -283,46 +315,53 @@ const OtherExpensesModule = () => {
 
       <Card className="p-6">
         <h3 className="text-xl font-semibold mb-4 text-foreground">Recent Expenses</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Receipt #</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {expenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  <TableCell>{new Date(expense.date).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <span className="px-2 py-1 bg-muted rounded text-xs">
-                      {expenseTypes.find(t => t.value === expense.expense_type)?.label}
-                    </span>
-                  </TableCell>
-                  <TableCell>{expense.description}</TableCell>
-                  <TableCell>{expense.vendor_name || '-'}</TableCell>
-                  <TableCell>{expense.receipt_number || '-'}</TableCell>
-                  <TableCell className="text-right font-semibold">{formatCurrency(expense.amount)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteDialogState({open: true, id: expense.id})}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
+        {expenses.length === 0 ? (
+          <div className="text-center py-8">
+            <TrendingDown className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No expenses recorded yet</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Receipt #</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {expenses.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>{new Date(expense.date).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <span className="px-2 py-1 bg-muted rounded text-xs">
+                        {expenseTypes.find(t => t.value === expense.expense_type)?.label}
+                      </span>
+                    </TableCell>
+                    <TableCell>{expense.description}</TableCell>
+                    <TableCell>{expense.vendor_name || '-'}</TableCell>
+                    <TableCell>{expense.receipt_number || '-'}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(expense.amount)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteDialogState({open: true, id: expense.id})}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </Card>
       
       {/* Delete Confirmation Dialog */}

@@ -41,6 +41,7 @@ const PaymentsModule = () => {
   });
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [employeeOptions, setEmployeeOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [factoryId, setFactoryId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Auto-calculated wages
@@ -69,10 +70,28 @@ const PaymentsModule = () => {
     }).format(amount);
   };
 
+  const loadFactoryId = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: factory } = await supabase
+      .from('factories')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+    
+    if (factory) {
+      setFactoryId(factory.id);
+    }
+  };
+
   const loadPayments = async () => {
+    if (!factoryId) return;
+    
     let query = supabase
       .from('employee_payments')
       .select('*')
+      .eq('factory_id', factoryId)
       .order('date', { ascending: false });
 
     if (dateFilter.start) {
@@ -119,34 +138,33 @@ const PaymentsModule = () => {
   };
 
   const loadEmployeeNames = async () => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
-      .from('employee_payments')
-      .select('employee_name')
-      .order('employee_name');
+      .from('employees')
+      .select('name')
+      .eq('factory_id', factoryId)
+      .order('name');
     
     if (error) {
       console.error('Error loading employees', error);
     } else {
-      const uniqueEmployees = new Set<string>();
-      data?.forEach(payment => {
-        if (payment.employee_name) {
-          uniqueEmployees.add(payment.employee_name);
-        }
-      });
-      
-      const options = Array.from(uniqueEmployees).map(name => ({
-        value: name,
-        label: name
-      }));
+      const options = data?.map(emp => ({
+        value: emp.name,
+        label: emp.name
+      })) || [];
       
       setEmployeeOptions(options);
     }
   };
 
   const loadEmployeePayments = async (employeeName: string) => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
       .from('employee_payments')
       .select('*')
+      .eq('factory_id', factoryId)
       .ilike('employee_name', employeeName)
       .order('date', { ascending: false });
     
@@ -159,13 +177,18 @@ const PaymentsModule = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!factoryId) {
+      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
+      return;
+    }
     
     const paymentData = {
       date: paymentForm.date,
       employee_name: paymentForm.employee_name,
       amount: Number(paymentForm.amount),
       payment_type: paymentForm.payment_type,
-      notes: paymentForm.notes
+      notes: paymentForm.notes,
+      factory_id: factoryId
     };
 
     if (editingPayment) {
@@ -267,10 +290,16 @@ const PaymentsModule = () => {
   };
 
   useEffect(() => {
-    loadPayments();
-    loadEmployeeNames();
-    calculateAutoWages();
-  }, [dateFilter]);
+    loadFactoryId();
+  }, []);
+
+  useEffect(() => {
+    if (factoryId) {
+      loadPayments();
+      loadEmployeeNames();
+      calculateAutoWages();
+    }
+  }, [factoryId, dateFilter]);
 
   const calculateAutoWages = async () => {
     try {

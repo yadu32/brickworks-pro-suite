@@ -59,12 +59,28 @@ const SalesModule = () => {
   const [paymentCustomer, setPaymentCustomer] = useState<CustomerSummary | null>(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [customerOptions, setCustomerOptions] = useState<Array<{ value: string; label: string; phone: string }>>([]);
+  const [factoryId, setFactoryId] = useState<string | null>(null);
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     date: new Date().toISOString().split('T')[0],
     notes: ''
   });
   const { toast } = useToast();
+
+  const loadFactoryId = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: factory } = await supabase
+      .from('factories')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+    
+    if (factory) {
+      setFactoryId(factory.id);
+    }
+  };
 
   const [saleForm, setSaleForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -86,9 +102,12 @@ const SalesModule = () => {
   };
 
   const loadProductTypes = async () => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
       .from('product_definitions')
       .select('*')
+      .eq('factory_id', factoryId)
       .order('name');
     
     if (error) {
@@ -99,6 +118,8 @@ const SalesModule = () => {
   };
 
   const loadSales = async () => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
       .from('sales')
       .select(`
@@ -109,6 +130,7 @@ const SalesModule = () => {
           unit
         )
       `)
+      .eq('factory_id', factoryId)
       .order('date', { ascending: false });
     
     if (error) {
@@ -173,6 +195,8 @@ const SalesModule = () => {
   };
 
   const loadCustomerSales = async (customerName: string) => {
+    if (!factoryId) return;
+    
     const { data, error } = await supabase
       .from('sales')
       .select(`
@@ -183,6 +207,7 @@ const SalesModule = () => {
           unit
         )
       `)
+      .eq('factory_id', factoryId)
       .eq('customer_name', customerName)
       .order('date', { ascending: true });
     
@@ -194,10 +219,13 @@ const SalesModule = () => {
   };
 
   const applyFIFOPayments = async (customerName: string, paymentAmount: number, newSaleId?: string) => {
+    if (!factoryId) return paymentAmount;
+    
     // Get all unpaid sales for this customer, ordered by date (oldest first)
     const { data: unpaidSales, error } = await supabase
       .from('sales')
       .select('*')
+      .eq('factory_id', factoryId)
       .eq('customer_name', customerName)
       .gt('balance_due', 0)
       .order('date', { ascending: true });
@@ -276,6 +304,11 @@ const SalesModule = () => {
         return;
       }
     } else {
+      if (!factoryId) {
+        toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
+        return;
+      }
+      
       // For new sales, implement FIFO payment logic
       
       // First, create the sale with full balance due (we'll adjust after FIFO)
@@ -289,7 +322,8 @@ const SalesModule = () => {
         total_amount: totalAmount,
         amount_received: 0, // Start with 0, will be updated by FIFO
         balance_due: totalAmount, // Start with full amount
-        notes: saleForm.notes
+        notes: saleForm.notes,
+        factory_id: factoryId
       };
 
       const { data: newSale, error: insertError } = await supabase
@@ -474,9 +508,15 @@ const SalesModule = () => {
   };
 
   useEffect(() => {
-    loadProductTypes();
-    loadSales();
+    loadFactoryId();
   }, []);
+
+  useEffect(() => {
+    if (factoryId) {
+      loadProductTypes();
+      loadSales();
+    }
+  }, [factoryId]);
 
   useEffect(() => {
     loadCustomers();
