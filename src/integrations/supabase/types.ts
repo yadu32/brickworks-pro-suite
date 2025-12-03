@@ -50,6 +50,7 @@ export type Database = {
           brick_type_id: string
           created_at: string
           date: string
+          factory_id: string | null
           id: string
           number_of_punches: number
           remarks: string | null
@@ -60,6 +61,7 @@ export type Database = {
           brick_type_id: string
           created_at?: string
           date: string
+          factory_id?: string | null
           id?: string
           number_of_punches: number
           remarks?: string | null
@@ -70,6 +72,7 @@ export type Database = {
           brick_type_id?: string
           created_at?: string
           date?: string
+          factory_id?: string | null
           id?: string
           number_of_punches?: number
           remarks?: string | null
@@ -81,6 +84,13 @@ export type Database = {
             columns: ["brick_type_id"]
             isOneToOne: false
             referencedRelation: "brick_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bricks_production_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
             referencedColumns: ["id"]
           },
         ]
@@ -695,7 +705,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_factory_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
