@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { 
   BarChart3, 
   Factory, 
@@ -24,17 +23,25 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'expenses', label: 'Other Expenses', icon: TrendingDown },
     { id: 'weekly', label: 'Reports', icon: Calendar },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
     <nav className="bg-background border-b border-border sticky top-0 z-50 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-2">
-            <Factory className="h-8 w-8 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">BrickWorks Manager</h1>
-          </div>
+          {/* Settings Button - Top Left */}
+          <button
+            onClick={() => onTabChange('settings')}
+            className={`p-3 rounded-full transition-colors ${
+              activeTab === 'settings' 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-card hover:bg-primary/20 text-foreground'
+            }`}
+          >
+            <Settings className="h-6 w-6" />
+          </button>
+          
+          <h1 className="text-xl font-bold text-foreground hidden sm:block">BrickWorks Manager</h1>
           
           <div className="hidden md:flex items-center space-x-2">
             {tabs.map((tab) => {
@@ -59,7 +66,7 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
             <select
               value={activeTab}
               onChange={(e) => onTabChange(e.target.value)}
-              className="input-dark py-2 px-3 rounded-lg"
+              className="input-dark py-2 px-3 rounded-lg bg-card"
             >
               {tabs.map((tab) => (
                 <option key={tab.id} value={tab.id}>

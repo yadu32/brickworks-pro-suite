@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon, Settings } from 'lucide-react';
+import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { QuickEntryDialogs } from '@/components/QuickEntryDialogs';
 
@@ -152,16 +152,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Settings Button - Top */}
-      <div className="p-4">
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('changeTab', { detail: 'settings' }))}
-          className="p-3 bg-card/90 backdrop-blur-sm rounded-full hover:bg-primary transition-colors"
-        >
-          <Settings className="h-6 w-6 text-foreground hover:text-primary-foreground" />
-        </button>
-      </div>
-
       <div className="max-w-7xl mx-auto p-6 space-y-8">
         {/* Sales Summary */}
         <section className="animate-fade-in">
