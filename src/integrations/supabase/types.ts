@@ -655,13 +655,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sales_brick_type_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "brick_types"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "sales_factory_id_fkey"
             columns: ["factory_id"]
             isOneToOne: false
