@@ -499,14 +499,14 @@ const ReportsModule = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="bg-muted/20 rounded-lg p-4 text-center">
-                    <p className="text-muted-foreground text-sm">Total Punches</p>
+                    <p className="text-secondary text-sm font-medium">Total Punches</p>
                     <p className="text-2xl font-bold text-foreground">{reportData.production.totalPunches.toLocaleString()}</p>
                   </div>
                   {reportData.production.byType.map((type, i) => (
                     <div key={i} className="bg-muted/20 rounded-lg p-4 text-center">
-                      <p className="text-muted-foreground text-sm">{type.name}</p>
+                      <p className="text-secondary text-sm font-medium">{type.name}</p>
                       <p className="text-2xl font-bold text-foreground">{type.quantity.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">{type.punches} punches</p>
+                      <p className="text-xs text-secondary">{type.punches} punches</p>
                     </div>
                   ))}
                 </div>
@@ -524,15 +524,15 @@ const ReportsModule = () => {
               <CardContent>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-success/10 rounded-lg p-4 text-center">
-                    <p className="text-muted-foreground text-sm">Total Revenue</p>
+                    <p className="text-secondary text-sm font-medium">Total Revenue</p>
                     <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-4 text-center">
-                    <p className="text-muted-foreground text-sm">Qty Sold</p>
+                    <p className="text-secondary text-sm font-medium">Qty Sold</p>
                     <p className="text-2xl font-bold text-foreground">{reportData.sales.totalQtySold.toLocaleString()}</p>
                   </div>
                   <div className="bg-warning/10 rounded-lg p-4 text-center">
-                    <p className="text-muted-foreground text-sm">Outstanding</p>
+                    <p className="text-secondary text-sm font-medium">Outstanding</p>
                     <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.sales.outstandingBalance)}</p>
                   </div>
                 </div>
@@ -552,10 +552,10 @@ const ReportsModule = () => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="text-left py-2 text-muted-foreground">Material</th>
-                        <th className="text-right py-2 text-muted-foreground">Purchased</th>
-                        <th className="text-right py-2 text-muted-foreground">Used</th>
-                        <th className="text-right py-2 text-muted-foreground">Cost</th>
+                        <th className="text-left py-2 text-foreground font-semibold">Material</th>
+                        <th className="text-right py-2 text-foreground font-semibold">Purchased</th>
+                        <th className="text-right py-2 text-foreground font-semibold">Used</th>
+                        <th className="text-right py-2 text-foreground font-semibold">Cost</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -591,23 +591,23 @@ const ReportsModule = () => {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Salary</p>
+                    <p className="text-secondary text-xs font-medium">Salary</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.salary)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Advance</p>
+                    <p className="text-secondary text-xs font-medium">Advance</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.advance)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Bonus</p>
+                    <p className="text-secondary text-xs font-medium">Bonus</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.bonus)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Incentive</p>
+                    <p className="text-secondary text-xs font-medium">Incentive</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.incentive)}</p>
                   </div>
                   <div className="bg-warning/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Total</p>
+                    <p className="text-secondary text-xs font-medium">Total</p>
                     <p className="text-lg font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
                   </div>
                 </div>
@@ -625,19 +625,19 @@ const ReportsModule = () => {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Material Costs</p>
+                    <p className="text-secondary text-xs font-medium">Material Costs</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.cogs.materialCost)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Production Wages</p>
+                    <p className="text-secondary text-xs font-medium">Production Wages</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.cogs.productionWages)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Loading Wages</p>
+                    <p className="text-secondary text-xs font-medium">Loading Wages</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.cogs.loadingWages)}</p>
                   </div>
                   <div className="bg-destructive/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Total COGS</p>
+                    <p className="text-secondary text-xs font-medium">Total COGS</p>
                     <p className="text-lg font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
                   </div>
                 </div>
@@ -655,27 +655,27 @@ const ReportsModule = () => {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Transport</p>
+                    <p className="text-secondary text-xs font-medium">Transport</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.transport)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Utilities</p>
+                    <p className="text-secondary text-xs font-medium">Utilities</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.utilities)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Salaries</p>
+                    <p className="text-secondary text-xs font-medium">Salaries</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.salaries)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Repairs</p>
+                    <p className="text-secondary text-xs font-medium">Repairs</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.repairs)}</p>
                   </div>
                   <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Misc</p>
+                    <p className="text-secondary text-xs font-medium">Misc</p>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.miscellaneous)}</p>
                   </div>
                   <div className="bg-warning/20 rounded-lg p-3 text-center">
-                    <p className="text-muted-foreground text-xs">Total</p>
+                    <p className="text-secondary text-xs font-medium">Total</p>
                     <p className="text-lg font-bold text-warning">{formatCurrency(reportData.expenses.total)}</p>
                   </div>
                 </div>
@@ -693,19 +693,19 @@ const ReportsModule = () => {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-muted-foreground">Total Revenue</span>
+                    <span className="text-foreground">Total Revenue</span>
                     <span className="text-xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-muted-foreground">- Production Costs (COGS)</span>
+                    <span className="text-foreground">- Production Costs (COGS)</span>
                     <span className="text-lg font-semibold text-destructive">-{formatCurrency(reportData.cogs.totalCOGS)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-muted-foreground">- Employee Payments</span>
+                    <span className="text-foreground">- Employee Payments</span>
                     <span className="text-lg font-semibold text-warning">-{formatCurrency(reportData.payments.total)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-muted-foreground">- Operating Expenses</span>
+                    <span className="text-foreground">- Operating Expenses</span>
                     <span className="text-lg font-semibold text-warning">-{formatCurrency(reportData.expenses.total)}</span>
                   </div>
                   <div className="flex justify-between items-center py-4 bg-muted/20 rounded-lg px-4">

@@ -45,7 +45,11 @@ interface CustomerSummary {
   last_transaction_date: string;
 }
 
-const SalesModule = () => {
+interface SalesModuleProps {
+  initialShowDuesOnly?: boolean;
+}
+
+const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
@@ -54,7 +58,7 @@ const SalesModule = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [customerSales, setCustomerSales] = useState<Sale[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showDuesOnly, setShowDuesOnly] = useState(false);
+  const [showDuesOnly, setShowDuesOnly] = useState(initialShowDuesOnly);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentCustomer, setPaymentCustomer] = useState<CustomerSummary | null>(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
@@ -66,6 +70,11 @@ const SalesModule = () => {
     notes: ''
   });
   const { toast } = useToast();
+
+  // Update showDuesOnly when initialShowDuesOnly prop changes
+  useEffect(() => {
+    setShowDuesOnly(initialShowDuesOnly);
+  }, [initialShowDuesOnly]);
 
   const loadFactoryId = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -702,15 +711,23 @@ const SalesModule = () => {
     <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center flex-wrap gap-3">
             <h1 className="text-3xl font-bold text-foreground">Sales Management</h1>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="btn-primary">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsAddCustomerOpen(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Sale
+                Add Customer
               </Button>
-            </DialogTrigger>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="btn-primary">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Sale
+                  </Button>
+                </DialogTrigger>
             <DialogContent className="modal-content max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-foreground">
@@ -830,7 +847,8 @@ const SalesModule = () => {
                 </div>
               </form>
             </DialogContent>
-        </Dialog>
+          </Dialog>
+            </div>
 
         <AddCustomerDialog
           open={isAddCustomerOpen}
@@ -842,27 +860,23 @@ const SalesModule = () => {
         />
       </div>
 
-        {/* Overall Summary */}
+        {/* Overall Summary - Consolidated */}
         <section className="animate-fade-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Overall Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="card-metric">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
+          <div className="card-metric">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="text-center">
                 <ShoppingCart className="h-8 w-8 text-primary mx-auto mb-2" />
                 <p className="text-secondary">Total Sales</p>
                 <p className="text-2xl font-bold text-foreground">{sales.length}</p>
               </div>
-            </div>
-            <div className="card-metric">
               <div className="text-center">
                 <IndianRupee className="h-8 w-8 text-success mx-auto mb-2" />
-                <p className="text-secondary">Total Sales</p>
+                <p className="text-secondary">Revenue</p>
                 <p className="text-2xl font-bold text-success">
                   {formatCurrency(sales.reduce((sum, s) => sum + s.total_amount, 0))}
                 </p>
               </div>
-            </div>
-            <div className="card-metric">
               <div className="text-center">
                 <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
                 <p className="text-secondary">Balance Due</p>
@@ -870,8 +884,6 @@ const SalesModule = () => {
                   {formatCurrency(sales.reduce((sum, s) => sum + s.balance_due, 0))}
                 </p>
               </div>
-            </div>
-            <div className="card-metric">
               <div className="text-center">
                 <User className="h-8 w-8 text-secondary mx-auto mb-2" />
                 <p className="text-secondary">Customers</p>

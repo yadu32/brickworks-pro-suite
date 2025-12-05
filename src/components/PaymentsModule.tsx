@@ -568,21 +568,11 @@ const PaymentsModule = () => {
           </div>
         </section>
 
-        {/* Payment Summary */}
+        {/* Payment Summary - Consolidated */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Payment Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="card-metric">
-              <div className="text-center">
-                <CreditCard className="h-8 w-8 text-primary mx-auto mb-2" />
-                <p className="text-secondary">Today's Payments</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {formatCurrency(todayPayments.reduce((sum, payment) => sum + payment.amount, 0))}
-                </p>
-                <p className="text-sm text-secondary">{todayPayments.length} payments</p>
-              </div>
-            </div>
-            <div className="card-metric">
+          <div className="card-metric">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
                 <p className="text-secondary">Weekly Payments</p>
@@ -591,8 +581,6 @@ const PaymentsModule = () => {
                 </p>
                 <p className="text-sm text-secondary">{weeklyPayments.length} payments</p>
               </div>
-            </div>
-            <div className="card-metric">
               <div className="text-center">
                 <DollarSign className="h-8 w-8 text-warning mx-auto mb-2" />
                 <p className="text-secondary">Total Payments</p>
@@ -601,8 +589,6 @@ const PaymentsModule = () => {
                 </p>
                 <p className="text-sm text-secondary">{payments.length} payments</p>
               </div>
-            </div>
-            <div className="card-metric">
               <div className="text-center">
                 <User className="h-8 w-8 text-secondary mx-auto mb-2" />
                 <p className="text-secondary">Employees</p>

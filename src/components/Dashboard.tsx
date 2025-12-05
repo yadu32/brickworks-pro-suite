@@ -150,6 +150,15 @@ const Dashboard = () => {
     }).format(amount);
   };
 
+  const handleOutstandingClick = () => {
+    window.dispatchEvent(new CustomEvent('changeTab', { 
+      detail: { tab: 'sales', showDuesOnly: true } 
+    }));
+  };
+
+  // Calculate total material value
+  const totalMaterialValue = materials.reduce((sum, m) => sum + (m.current_stock_qty * m.average_cost_per_unit), 0);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -169,9 +178,7 @@ const Dashboard = () => {
             
             <div 
               className="card-metric cursor-pointer hover:ring-2 hover:ring-warning transition-all"
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('changeTab', { detail: 'sales' }));
-              }}
+              onClick={handleOutstandingClick}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -184,51 +191,55 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Production & Inventory - Dynamic Brick Types */}
+        {/* Production Overview - Consolidated */}
         <section className="animate-slide-up">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Production & Inventory</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Production Overview</h2>
           <div className="card-metric">
-            <div className={`grid gap-6 ${brickStocks.length > 2 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2'}`}>
-              {brickStocks.length === 0 ? (
-                <div className="col-span-full text-center text-muted-foreground py-4">
-                  No brick types defined. Add brick types in Settings.
-                </div>
-              ) : (
-                brickStocks.map((brick) => (
+            {brickStocks.length === 0 ? (
+              <div className="text-center text-muted-foreground py-4">
+                No brick types defined. Add brick types in Settings.
+              </div>
+            ) : (
+              <div className={`grid gap-6 ${brickStocks.length > 2 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2'}`}>
+                {brickStocks.map((brick) => (
                   <div key={brick.id} className="text-center">
                     <Package className="h-8 w-8 text-warning mx-auto mb-2" />
                     <p className="text-secondary">{brick.name}</p>
                     <p className="text-2xl font-bold text-foreground">{brick.stock.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">In Stock</p>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
-        {/* Material Stock Values - Dynamic Materials */}
+        {/* Material Stock Overview - Consolidated */}
         <section className="animate-slide-up">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Material Inventory</h2>
-          <div className={`grid gap-6 ${materials.length > 3 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Material Stock Overview</h2>
+          <div className="card-metric">
             {materials.length === 0 ? (
-              <div className="col-span-full card-metric text-center text-muted-foreground py-4">
+              <div className="text-center text-muted-foreground py-4">
                 No materials defined. Add materials in Settings.
               </div>
             ) : (
-              materials.map((material) => (
-                <div key={material.id} className="card-metric">
-                  <div className="text-center">
-                    <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-                    <p className="text-secondary">{material.material_name}</p>
-                    <p className="text-xl font-bold text-foreground">
-                      {material.current_stock_qty} {material.unit}
-                    </p>
-                    <p className="text-secondary">
-                      {formatCurrency(material.current_stock_qty * material.average_cost_per_unit)}
-                    </p>
-                  </div>
+              <>
+                <div className={`grid gap-6 ${materials.length > 3 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
+                  {materials.map((material) => (
+                    <div key={material.id} className="text-center">
+                      <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                      <p className="text-secondary">{material.material_name}</p>
+                      <p className="text-xl font-bold text-foreground">
+                        {material.current_stock_qty} {material.unit}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))
+                <div className="mt-4 pt-4 border-t border-border text-center">
+                  <p className="text-secondary">Total Stock Value</p>
+                  <p className="text-xl font-bold text-primary">{formatCurrency(totalMaterialValue)}</p>
+                </div>
+              </>
             )}
           </div>
         </section>

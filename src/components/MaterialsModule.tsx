@@ -179,19 +179,27 @@ const MaterialsModule = () => {
   const loadSuppliers = async () => {
     if (!factoryId) return;
     
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('suppliers')
       .select('name, contact_number')
       .eq('factory_id', factoryId)
       .order('name');
     
-    if (data) {
+    if (error) {
+      console.error('Error loading suppliers:', error);
+      return;
+    }
+    
+    if (data && data.length > 0) {
       setSupplierOptions(
         data.map(s => ({
           value: s.name,
           label: s.name
         }))
       );
+    } else {
+      // Set empty array if no suppliers found
+      setSupplierOptions([]);
     }
   };
 
@@ -756,19 +764,19 @@ const MaterialsModule = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Material Stock Overview */}
+        {/* Material Stock Overview - Consolidated */}
         <section className="animate-fade-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Current Stock</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Stock Overview</h2>
           {materials.length === 0 ? (
             <div className="card-dark p-8 text-center">
               <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No materials defined yet. Add materials in Settings.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {materials.map((material) => (
-                <div key={material.id} className="card-metric">
-                  <div className="text-center">
+            <div className="card-metric">
+              <div className={`grid gap-6 ${materials.length > 3 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
+                {materials.map((material) => (
+                  <div key={material.id} className="text-center">
                     {material.material_name.toLowerCase().includes('diesel') ? (
                       <Fuel className="h-8 w-8 text-warning mx-auto mb-2" />
                     ) : (
@@ -778,7 +786,7 @@ const MaterialsModule = () => {
                     <p className="text-2xl font-bold text-foreground">
                       {material.current_stock_qty.toLocaleString()} {material.unit}
                     </p>
-                    <p className="text-secondary">{formatCurrency(material.current_stock_qty * material.average_cost_per_unit)}</p>
+                    <p className="text-sm text-secondary">{formatCurrency(material.current_stock_qty * material.average_cost_per_unit)}</p>
                     {material.current_stock_qty <= 0 && (
                       <div className="flex items-center justify-center mt-2 text-warning">
                         <AlertTriangle className="h-4 w-4 mr-1" />
@@ -786,8 +794,14 @@ const MaterialsModule = () => {
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-border text-center">
+                <p className="text-secondary">Total Stock Value</p>
+                <p className="text-xl font-bold text-primary">
+                  {formatCurrency(materials.reduce((sum, m) => sum + (m.current_stock_qty * m.average_cost_per_unit), 0))}
+                </p>
+              </div>
             </div>
           )}
         </section>
