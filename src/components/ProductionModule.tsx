@@ -198,7 +198,10 @@ const ProductionModule = () => {
       if (error) throw error;
       
       toast({ title: "Success", description: "Production record deleted successfully" });
-      loadProductionRecords();
+      // Immediately update local state to remove the deleted record
+      setProductionRecords(prev => prev.filter(r => r.id !== id));
+      // Also refresh from server to ensure consistency
+      await loadProductionRecords();
     } catch (error) {
       console.error('Error deleting production record:', error);
       toast({ title: "Error", description: "Failed to delete production record", variant: "destructive" });
