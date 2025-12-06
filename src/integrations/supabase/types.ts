@@ -209,6 +209,10 @@ export type Database = {
           location: string | null
           name: string
           owner_id: string
+          plan_expiry_date: string | null
+          plan_type: string | null
+          subscription_status: string
+          trial_ends_at: string | null
         }
         Insert: {
           created_at?: string
@@ -216,6 +220,10 @@ export type Database = {
           location?: string | null
           name: string
           owner_id: string
+          plan_expiry_date?: string | null
+          plan_type?: string | null
+          subscription_status?: string
+          trial_ends_at?: string | null
         }
         Update: {
           created_at?: string
@@ -223,6 +231,10 @@ export type Database = {
           location?: string | null
           name?: string
           owner_id?: string
+          plan_expiry_date?: string | null
+          plan_type?: string | null
+          subscription_status?: string
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
