@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Plus, Edit, Trash2, Calendar, User, DollarSign, TrendingUp } from 'lucide-react';
+import { CreditCard, Plus, Edit, Trash2, Calendar, User, DollarSign, TrendingUp, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddEmployeeDialog } from '@/components/AddEmployeeDialog';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface EmployeePayment {
   id: string;
@@ -43,6 +44,16 @@ const PaymentsModule = () => {
   const [employeeOptions, setEmployeeOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [factoryId, setFactoryId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
+  const isReadOnly = isTrialExpired && !isActive;
+
+  const handleAddClick = () => {
+    if (canPerformAction()) {
+      setIsDialogOpen(true);
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
 
   // Auto-calculated wages
   const [productionWages, setProductionWages] = useState(0);

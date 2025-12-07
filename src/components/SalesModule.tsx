@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Mail, Search, X, DollarSign } from 'lucide-react';
+import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Mail, Search, X, DollarSign, Lock } from 'lucide-react';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { generateInvoicePDF, shareViaWhatsApp, shareViaEmail, downloadPDF } from '@/utils/invoiceGenerator';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddCustomerDialog } from '@/components/AddCustomerDialog';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface ProductType {
   id: string;
@@ -70,6 +71,16 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     notes: ''
   });
   const { toast } = useToast();
+  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
+  const isReadOnly = isTrialExpired && !isActive;
+
+  const handleAddClick = () => {
+    if (canPerformAction()) {
+      setIsDialogOpen(true);
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
 
   // Update showDuesOnly when initialShowDuesOnly prop changes
   useEffect(() => {

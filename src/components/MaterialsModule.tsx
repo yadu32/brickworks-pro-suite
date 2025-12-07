@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, TrendingDown, AlertTriangle, Fuel, Calendar, Wallet } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, TrendingDown, AlertTriangle, Fuel, Calendar, Wallet, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddSupplierDialog } from '@/components/AddSupplierDialog';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface Material {
   id: string;
@@ -72,6 +73,24 @@ const MaterialsModule = () => {
   const [payAmount, setPayAmount] = useState('');
   
   const { toast } = useToast();
+  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
+  const isReadOnly = isTrialExpired && !isActive;
+
+  const handleAddPurchaseClick = () => {
+    if (canPerformAction()) {
+      setIsPurchaseDialogOpen(true);
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
+
+  const handleAddUsageClick = () => {
+    if (canPerformAction()) {
+      setIsUsageDialogOpen(true);
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
 
   const [purchaseForm, setPurchaseForm] = useState({
     date: new Date().toISOString().split('T')[0],

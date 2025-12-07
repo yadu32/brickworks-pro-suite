@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, Factory, Calendar } from 'lucide-react';
+import { Plus, Edit3, Trash2, Factory, Calendar, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface ProductDefinition {
   id: string;
@@ -43,6 +44,17 @@ const ProductionModule = () => {
     quantity: '',
     remarks: ''
   });
+
+  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
+  const isReadOnly = isTrialExpired && !isActive;
+
+  const handleAddClick = () => {
+    if (canPerformAction()) {
+      setIsDialogOpen(true);
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
 
   useEffect(() => {
     loadFactoryId();
@@ -230,13 +242,13 @@ const ProductionModule = () => {
             <p className="text-muted-foreground">Track and manage production efficiency</p>
           </div>
           
+          <Button className="btn-orange" onClick={handleAddClick} disabled={isReadOnly}>
+            {isReadOnly && <Lock className="h-4 w-4 mr-2" />}
+            <Plus className="h-4 w-4 mr-2" />
+            Add Production
+          </Button>
+          
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="btn-orange">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Production
-              </Button>
-            </DialogTrigger>
             <DialogContent className="card-dark max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-foreground">
