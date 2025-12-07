@@ -6,6 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from '@supabase/supabase-js';
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import TrialExpiredBanner from "@/components/TrialExpiredBanner";
+import UpgradePlanModal from "@/components/UpgradePlanModal";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./components/Onboarding";
@@ -90,6 +93,15 @@ const App = () => {
     );
   }
 
+  // Main app content wrapped with subscription context
+  const MainApp = () => (
+    <SubscriptionProvider>
+      <TrialExpiredBanner />
+      <UpgradePlanModal />
+      <Index />
+    </SubscriptionProvider>
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -105,7 +117,7 @@ const App = () => {
                 ) : !hasFactory ? (
                   <Onboarding userId={user.id} onComplete={handleOnboardingComplete} />
                 ) : (
-                  <Index />
+                  <MainApp />
                 )
               } 
             />

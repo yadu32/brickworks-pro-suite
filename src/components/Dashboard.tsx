@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon } from 'lucide-react';
+import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { QuickEntryDialogs } from '@/components/QuickEntryDialogs';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface QuickActionButtonProps {
   icon: LucideIcon;
   label: string;
   action: 'sale' | 'production' | 'usage' | 'payment';
   onClick: () => void;
+  disabled?: boolean;
 }
 
 interface ProductDefinition {
@@ -30,9 +32,18 @@ interface BrickStock {
   stock: number;
 }
 
-const QuickActionButton = ({ icon: Icon, label, onClick }: QuickActionButtonProps) => {
+const QuickActionButton = ({ icon: Icon, label, onClick, disabled }: QuickActionButtonProps) => {
   return (
-    <button onClick={onClick} className="card-dark p-4 text-center hover-scale">
+    <button 
+      onClick={onClick} 
+      className={`card-dark p-4 text-center hover-scale relative ${disabled ? 'opacity-60' : ''}`}
+      disabled={disabled}
+    >
+      {disabled && (
+        <div className="absolute top-2 right-2">
+          <Lock className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
       <Icon className="h-8 w-8 text-primary mx-auto mb-2" />
       <p className="text-sm font-medium text-foreground">{label}</p>
     </button>
@@ -49,6 +60,17 @@ const Dashboard = () => {
     outstandingReceivables: 0
   });
   const [weeklyPayments, setWeeklyPayments] = useState(0);
+
+  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
+  const isReadOnly = isTrialExpired && !isActive;
+
+  const handleQuickAction = (action: 'sale' | 'production' | 'usage' | 'payment') => {
+    if (canPerformAction()) {
+      setQuickEntryType(action);
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
 
   const loadFactory = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -262,12 +284,39 @@ const Dashboard = () => {
 
         {/* New Entry */}
         <section className="animate-scale-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">New Entry</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">
+            New Entry
+            {isReadOnly && <span className="text-sm font-normal text-muted-foreground ml-2">(Upgrade to unlock)</span>}
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <QuickActionButton icon={Factory} label="Production" action="production" onClick={() => setQuickEntryType('production')} />
-            <QuickActionButton icon={ShoppingCart} label="Sale" action="sale" onClick={() => setQuickEntryType('sale')} />
-            <QuickActionButton icon={Package} label="Material" action="usage" onClick={() => setQuickEntryType('usage')} />
-            <QuickActionButton icon={CreditCard} label="Payment" action="payment" onClick={() => setQuickEntryType('payment')} />
+            <QuickActionButton 
+              icon={Factory} 
+              label="Production" 
+              action="production" 
+              onClick={() => handleQuickAction('production')} 
+              disabled={isReadOnly}
+            />
+            <QuickActionButton 
+              icon={ShoppingCart} 
+              label="Sale" 
+              action="sale" 
+              onClick={() => handleQuickAction('sale')} 
+              disabled={isReadOnly}
+            />
+            <QuickActionButton 
+              icon={Package} 
+              label="Material" 
+              action="usage" 
+              onClick={() => handleQuickAction('usage')} 
+              disabled={isReadOnly}
+            />
+            <QuickActionButton 
+              icon={CreditCard} 
+              label="Payment" 
+              action="payment" 
+              onClick={() => handleQuickAction('payment')} 
+              disabled={isReadOnly}
+            />
           </div>
         </section>
       </div>
