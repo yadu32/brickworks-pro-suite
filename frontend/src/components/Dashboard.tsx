@@ -61,29 +61,23 @@ const Dashboard = () => {
   });
   const [weeklyPayments, setWeeklyPayments] = useState(0);
 
-  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
-  const isReadOnly = isTrialExpired && !isActive;
+  const { user } = useAuth();
+  const isReadOnly = false; // Subscription logic to be re-implemented later
 
   const handleQuickAction = (action: 'sale' | 'production' | 'usage' | 'payment') => {
-    if (canPerformAction()) {
-      setQuickEntryType(action);
-    } else {
-      setShowUpgradeModal(true);
-    }
+    setQuickEntryType(action);
   };
 
   const loadFactory = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (data) {
-      setFactoryId(data.id);
+    try {
+      const factories = await factoryApi.getAll();
+      if (factories.length > 0) {
+        setFactoryId(factories[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading factory:', error);
     }
   };
 
