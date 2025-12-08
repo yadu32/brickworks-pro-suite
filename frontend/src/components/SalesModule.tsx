@@ -736,12 +736,32 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="customerName">Customer Name</Label>
-                    <Input
-                      id="customerName"
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="customerName">Customer Name</Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsAddCustomerOpen(true)}
+                        className="h-7 text-xs"
+                      >
+                        <UserPlus className="h-3 w-3 mr-1" />
+                        Add New
+                      </Button>
+                    </div>
+                    <SearchableSelect
+                      options={customerOptions}
                       value={saleForm.customer_name}
-                      onChange={(e) => setSaleForm({...saleForm, customer_name: e.target.value})}
-                      required
+                      onChange={(value) => {
+                        const selectedCustomer = customerOptions.find(c => c.value === value);
+                        setSaleForm({
+                          ...saleForm, 
+                          customer_name: value,
+                          customer_phone: selectedCustomer?.phone || ''
+                        });
+                      }}
+                      placeholder="Select or type customer name..."
+                      searchPlaceholder="Search customers..."
                     />
                   </div>
                   <div>
