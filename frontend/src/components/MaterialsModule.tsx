@@ -211,37 +211,9 @@ const MaterialsModule = () => {
   };
 
   const updateMaterialStock = async (materialId: string) => {
-    if (!factoryId) return;
-    
-    // Calculate total purchases
-    const { data: purchaseData } = await supabase
-      .from('material_purchases')
-      .select('quantity_purchased, unit_cost')
-      .eq('material_id', materialId)
-      .eq('factory_id', factoryId);
-
-    // Calculate total usage
-    const { data: usageData } = await supabase
-      .from('material_usage')
-      .select('quantity_used')
-      .eq('material_id', materialId)
-      .eq('factory_id', factoryId);
-
-    const totalPurchased = purchaseData?.reduce((sum, p) => sum + Number(p.quantity_purchased), 0) || 0;
-    const totalUsed = usageData?.reduce((sum, u) => sum + Number(u.quantity_used), 0) || 0;
-    const currentStock = totalPurchased - totalUsed;
-
-    // Calculate average cost
-    const totalValue = purchaseData?.reduce((sum, p) => sum + (Number(p.quantity_purchased) * Number(p.unit_cost)), 0) || 0;
-    const averageCost = totalPurchased > 0 ? totalValue / totalPurchased : 0;
-
-    await supabase
-      .from('materials')
-      .update({
-        current_stock_qty: currentStock,
-        average_cost_per_unit: averageCost
-      })
-      .eq('id', materialId);
+    // Stock is now automatically updated by backend when purchases/usage are created
+    // This function is kept for compatibility but does nothing
+    return;
   };
 
   const calculateBalance = (purchase: MaterialPurchase) => {
