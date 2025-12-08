@@ -89,22 +89,13 @@ const Dashboard = () => {
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       // Get all product definitions (brick types) for this factory
-      const { data: products } = await supabase
-        .from('product_definitions')
-        .select('*')
-        .eq('factory_id', factoryId);
+      const products = await productApi.getByFactory(factoryId);
 
       // Get all production for this factory
-      const { data: allProd } = await supabase
-        .from('production_logs')
-        .select('*')
-        .eq('factory_id', factoryId);
+      const allProd = await productionApi.getByFactory(factoryId);
 
       // Get all sales for this factory
-      const { data: allSales } = await supabase
-        .from('sales')
-        .select('*')
-        .eq('factory_id', factoryId);
+      const allSales = await saleApi.getByFactory(factoryId);
 
       // Calculate stock for each product type
       const stocks: BrickStock[] = (products || []).map(p => {
@@ -119,28 +110,17 @@ const Dashboard = () => {
       setBrickStocks(stocks);
 
       // Sales metrics
-      const { data: monthlySales } = await supabase
-        .from('sales')
-        .select('*')
-        .eq('factory_id', factoryId)
-        .gte('date', startOfMonth);
+      const monthlySales = await saleApi.getByFactory(factoryId, startOfMonth);
       const monthlyRevenue = monthlySales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
       const outstandingReceivables = allSales?.reduce((sum, s) => sum + s.balance_due, 0) || 0;
       setSalesMetrics({ monthlyRevenue, outstandingReceivables });
 
       // Materials - load all for this factory
-      const { data: materialsData } = await supabase
-        .from('materials')
-        .select('*')
-        .eq('factory_id', factoryId);
+      const materialsData = await materialApi.getByFactory(factoryId);
       setMaterials(materialsData || []);
 
       // Employee payments
-      const { data: weeklyPaymentsData } = await supabase
-        .from('employee_payments')
-        .select('*')
-        .eq('factory_id', factoryId)
-        .gte('date', weekAgo);
+      const weeklyPaymentsData = await employeeApi.getPayments(factoryId, weekAgo);
       const weeklyTotal = weeklyPaymentsData?.reduce((sum, p) => sum + p.amount, 0) || 0;
       setWeeklyPayments(weeklyTotal);
     } catch (error) {
