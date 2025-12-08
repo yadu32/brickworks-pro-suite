@@ -44,15 +44,17 @@ const PaymentsModule = () => {
   const [employeeOptions, setEmployeeOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [factoryId, setFactoryId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
-  const isReadOnly = isTrialExpired && !isActive;
+  const { factoryId: hookFactoryId } = useFactory();
+  const isReadOnly = false;
+
+  useEffect(() => {
+    if (hookFactoryId) {
+      setFactoryId(hookFactoryId);
+    }
+  }, [hookFactoryId]);
 
   const handleAddClick = () => {
-    if (canPerformAction()) {
-      setIsDialogOpen(true);
-    } else {
-      setShowUpgradeModal(true);
-    }
+    setIsDialogOpen(true);
   };
 
   // Auto-calculated wages
