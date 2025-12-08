@@ -115,40 +115,35 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   const loadProductTypes = async () => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('product_definitions')
-      .select('*')
-      .eq('factory_id', factoryId)
-      .order('name');
-    
-    if (error) {
-      toast({ title: 'Error loading product types', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const data = await productApi.getByFactory(factoryId);
       setProductTypes(data || []);
+    } catch (error: any) {
+      toast({ title: 'Error loading product types', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
   };
 
   const loadSales = async () => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('sales')
-      .select(`
-        *,
-        product_definitions (
-          id,
-          name,
-          unit
-        )
-      `)
-      .eq('factory_id', factoryId)
-      .order('date', { ascending: false });
-    
-    if (error) {
-      toast({ title: 'Error loading sales', description: error.message, variant: 'destructive' });
-    } else {
-      setSales(data as unknown as Sale[] || []);
-      calculateCustomerSummaries(data as unknown as Sale[] || []);
+    try {
+      const salesData = await saleApi.getByFactory(factoryId);
+      const products = await productApi.getByFactory(factoryId);
+      
+      // Enrich sales with product details
+      const enrichedSales = salesData.map(sale => ({
+        ...sale,
+        product_definitions: products.find(p => p.id === sale.product_id) || {
+          id: sale.product_id,
+          name: 'Unknown',
+          unit: 'pieces'
+        }
+      }));
+      
+      setSales(enrichedSales as unknown as Sale[]);
+      calculateCustomerSummaries(enrichedSales as unknown as Sale[]);
+    } catch (error: any) {
+      toast({ title: 'Error loading sales', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
   };
 
