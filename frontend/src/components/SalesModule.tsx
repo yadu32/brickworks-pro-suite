@@ -71,15 +71,17 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     notes: ''
   });
   const { toast } = useToast();
-  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
-  const isReadOnly = isTrialExpired && !isActive;
+  const { factoryId: hookFactoryId } = useFactory();
+  const isReadOnly = false;
+
+  useEffect(() => {
+    if (hookFactoryId) {
+      setFactoryId(hookFactoryId);
+    }
+  }, [hookFactoryId]);
 
   const handleAddClick = () => {
-    if (canPerformAction()) {
-      setIsDialogOpen(true);
-    } else {
-      setShowUpgradeModal(true);
-    }
+    setIsDialogOpen(true);
   };
 
   // Update showDuesOnly when initialShowDuesOnly prop changes
@@ -88,18 +90,7 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   }, [initialShowDuesOnly]);
 
   const loadFactoryId = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: factory } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    
-    if (factory) {
-      setFactoryId(factory.id);
-    }
+    // Factory ID is loaded via useFactory hook
   };
 
   const [saleForm, setSaleForm] = useState({
