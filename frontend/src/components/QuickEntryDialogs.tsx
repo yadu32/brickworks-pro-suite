@@ -20,7 +20,7 @@ interface QuickEntryDialogsProps {
 
 export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialogsProps) {
   const { toast } = useToast();
-  const [factoryId, setFactoryId] = useState<string | null>(null);
+  const { factoryId } = useFactory();
   const [products, setProducts] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [customerOptions, setCustomerOptions] = useState<Array<{ value: string; label: string; phone: string }>>([]);
