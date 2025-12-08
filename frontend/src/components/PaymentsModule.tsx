@@ -152,14 +152,13 @@ const PaymentsModule = () => {
     
     try {
       const data = await employeeApi.getPayments(factoryId);
-      const filtered = data.filter(p => p.employee_name === employeeName)
-      .ilike('employee_name', employeeName)
-      .order('date', { ascending: false });
-    
-    if (error) {
-      toast({ title: 'Error loading employee payments', description: error.message, variant: 'destructive' });
-    } else {
-      setEmployeePayments(data || []);
+      const filtered = data
+        .filter(p => p.employee_name.toLowerCase() === employeeName.toLowerCase())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setEmployeePayments(filtered || []);
+    } catch (error: any) {
+      toast({ title: 'Error loading employee payments', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
   };
 
