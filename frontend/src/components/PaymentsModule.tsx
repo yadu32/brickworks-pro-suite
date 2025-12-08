@@ -133,21 +133,17 @@ const PaymentsModule = () => {
   const loadEmployeeNames = async () => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('employees')
-      .select('name')
-      .eq('factory_id', factoryId)
-      .order('name');
-    
-    if (error) {
-      console.error('Error loading employees', error);
-    } else {
+    try {
+      const data = await employeeApi.getByFactory(factoryId);
       const options = data?.map(emp => ({
         value: emp.name,
         label: emp.name
       })) || [];
       
       setEmployeeOptions(options);
+    } catch (error) {
+      console.error('Error loading employees', error);
+      setEmployeeOptions([]);
     }
   };
 
