@@ -235,11 +235,10 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
           unit: 'pieces'
         }
       }));
-    
-    if (error) {
-      toast({ title: 'Error loading customer sales', description: error.message, variant: 'destructive' });
-    } else {
-      setCustomerSales(data as unknown as Sale[] || []);
+      
+      setCustomerSales(enriched as unknown as Sale[]);
+    } catch (error: any) {
+      toast({ title: 'Error loading customer sales', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
   };
 
