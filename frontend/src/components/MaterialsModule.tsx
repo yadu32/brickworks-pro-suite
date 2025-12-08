@@ -125,74 +125,60 @@ const MaterialsModule = () => {
   };
 
   const loadFactoryId = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: factory } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    
-    if (factory) {
-      setFactoryId(factory.id);
-    }
+    // Factory ID is now loaded via useFactory hook
   };
 
   const loadMaterials = async () => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('materials')
-      .select('*')
-      .eq('factory_id', factoryId)
-      .order('material_name');
-    
-    if (error) {
-      toast({ title: 'Error loading materials', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const data = await materialApi.getByFactory(factoryId);
       setMaterials(data || []);
+    } catch (error: any) {
+      toast({ title: 'Error loading materials', description: error.message, variant: 'destructive' });
     }
   };
 
   const loadPurchases = async () => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('material_purchases')
-      .select(`
-        *,
-        materials (
-          id,
-          material_name,
-          unit
-        )
-      `)
-      .eq('factory_id', factoryId)
-      .order('date', { ascending: false });
-    
-    if (error) {
+    try {
+      const data = await materialApi.getPurchases(factoryId);
+      // Add material details to each purchase
+      const materialsData = await materialApi.getByFactory(factoryId);
+      const enrichedData = data.map(purchase => ({
+        ...purchase,
+        materials: materialsData.find(m => m.id === purchase.material_id) || {
+          id: purchase.material_id,
+          material_name: 'Unknown',
+          unit: ''
+        }
+      }));
+      setPurchases(enrichedData as any);
+    } catch (error: any) {
       toast({ title: 'Error loading purchases', description: error.message, variant: 'destructive' });
-    } else {
-      setPurchases(data || []);
     }
   };
 
   const loadUsage = async () => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('material_usage')
-      .select(`
-        *,
-        materials (
-          id,
-          material_name,
-          unit
-        )
-      `)
-      .eq('factory_id', factoryId)
-      .order('date', { ascending: false });
+    try {
+      const data = await materialApi.getUsage(factoryId);
+      // Add material details to each usage
+      const materialsData = await materialApi.getByFactory(factoryId);
+      const enrichedData = data.map(usage => ({
+        ...usage,
+        materials: materialsData.find(m => m.id === usage.material_id) || {
+          id: usage.material_id,
+          material_name: 'Unknown',
+          unit: ''
+        }
+      }));
+      setUsage(enrichedData as any);
+    } catch (error: any) {
+      toast({ title: 'Error loading usage', description: error.message, variant: 'destructive' });
+    }
     
     if (error) {
       toast({ title: 'Error loading usage', description: error.message, variant: 'destructive' });
