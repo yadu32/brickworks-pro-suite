@@ -178,39 +178,29 @@ const PaymentsModule = () => {
       factory_id: factoryId
     };
 
-    if (editingPayment) {
-      const { error } = await supabase
-        .from('employee_payments')
-        .update(paymentData)
-        .eq('id', editingPayment.id);
-      
-      if (error) {
-        toast({ title: 'Error updating payment', description: error.message, variant: 'destructive' });
+    try {
+      if (editingPayment) {
+        toast({ title: 'Update functionality coming soon' });
         return;
+      } else {
+        await employeeApi.createPayment(paymentData);
       }
-    } else {
-      const { error } = await supabase
-        .from('employee_payments')
-        .insert([paymentData]);
-      
-      if (error) {
-        toast({ title: 'Error adding payment', description: error.message, variant: 'destructive' });
-        return;
-      }
-    }
 
-    await loadPayments();
-    setIsDialogOpen(false);
-    setEditingPayment(null);
-    setPaymentForm({
-      date: new Date().toISOString().split('T')[0],
-      employee_name: '',
-      amount: '',
-      payment_type: '',
-      notes: ''
-    });
-    
-    toast({ title: editingPayment ? 'Payment updated successfully' : 'Payment added successfully' });
+      await loadPayments();
+      setIsDialogOpen(false);
+      setEditingPayment(null);
+      setPaymentForm({
+        date: new Date().toISOString().split('T')[0],
+        employee_name: '',
+        amount: '',
+        payment_type: '',
+        notes: ''
+      });
+      
+      toast({ title: editingPayment ? 'Payment updated successfully' : 'Payment added successfully' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to save payment', variant: 'destructive' });
+    }
   };
 
   const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
