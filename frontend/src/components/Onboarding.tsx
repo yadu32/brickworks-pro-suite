@@ -107,91 +107,63 @@ const Onboarding = ({ userId, onComplete }: OnboardingProps) => {
 
     setLoading(true);
     try {
+      // Import APIs
+      const { factoryApi } = await import('@/api/factory');
+      const { productApi } = await import('@/api/product');
+      const { materialApi } = await import('@/api/material');
+      const { expenseApi } = await import('@/api/expense');
+
       // 1. Create factory
-      const { data: factoryData, error: factoryError } = await supabase
-        .from('factories')
-        .insert({
-          name: factoryName,
-          location: location || null,
-          owner_id: userId,
-        })
-        .select()
-        .single();
+      const factory = await factoryApi.create({
+        name: factoryName,
+        location: location || undefined,
+      });
 
-      if (factoryError) throw factoryError;
-
-      const factoryId = factoryData.id;
+      const factoryId = factory.id;
 
       // 2. Create product definitions (brick types)
-      const productInserts = brickTypes
-        .filter(bt => bt.name.trim())
-        .map(bt => ({
+      for (const bt of brickTypes.filter(bt => bt.name.trim())) {
+        await productApi.create({
           factory_id: factoryId,
           name: bt.name,
-          size_description: bt.size || null,
+          size_description: bt.size || undefined,
           items_per_punch: bt.bricksPerPunch,
           unit: 'Pieces',
-        }));
+        });
+      }
 
-      const { error: productError } = await supabase
-        .from('product_definitions')
-        .insert(productInserts);
+      // 3. Create materials inventory (with 0 stock)
+      for (const m of validMaterials) {
+        await materialApi.create({
+          factory_id: factoryId,
+          material_name: m.name,
+          unit: m.unit,
+          current_stock_qty: 0,
+          average_cost_per_unit: 0,
+        });
+      }
 
-      if (productError) throw productError;
-
-      // 3. Create material definitions
-      const materialDefInserts = validMaterials.map(m => ({
+      // 4. Create default factory rates
+      await expenseApi.createRate({
         factory_id: factoryId,
-        name: m.name,
-        unit: m.unit,
-      }));
+        rate_type: 'production_per_punch',
+        rate_amount: 15,
+        is_active: true,
+      });
 
-      const { error: materialDefError } = await supabase
-        .from('material_definitions')
-        .insert(materialDefInserts);
-
-      if (materialDefError) throw materialDefError;
-
-      // 4. Create materials inventory (with 0 stock)
-      const materialInserts = validMaterials.map(m => ({
+      await expenseApi.createRate({
         factory_id: factoryId,
-        material_name: m.name,
-        unit: m.unit,
-        current_stock_qty: 0,
-        average_cost_per_unit: 0,
-      }));
-
-      const { error: materialError } = await supabase
-        .from('materials')
-        .insert(materialInserts);
-
-      if (materialError) throw materialError;
-
-      // 5. Create default factory rates
-      const { error: ratesError } = await supabase
-        .from('factory_rates')
-        .insert([
-          {
-            factory_id: factoryId,
-            rate_type: 'production_per_punch',
-            rate_amount: 15,
-            is_active: true,
-          },
-          {
-            factory_id: factoryId,
-            rate_type: 'loading_per_brick',
-            rate_amount: 2,
-            is_active: true,
-          },
-        ]);
-
-      if (ratesError) throw ratesError;
+        rate_type: 'loading_per_brick',
+        rate_amount: 2,
+        is_active: true,
+      });
 
       toast({ title: "Setup complete!", description: "Your factory is ready to use." });
       onComplete();
     } catch (error: any) {
       console.error('Onboarding error:', error);
-      toast({ title: "Setup failed", description: error.message, variant: "destructive" });
+      const message = error.response?.data?.detail || error.message || 'Setup failed';
+      toast({ title: "Setup failed", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
