@@ -1,4 +1,4 @@
-from .user import User, UserCreate, UserLogin, UserResponse
+from .user import User, UserCreate, UserLogin, UserResponse, Token
 from .factory import Factory, FactoryCreate, FactoryUpdate
 from .product import ProductDefinition, ProductDefinitionCreate, ProductDefinitionUpdate
 from .production import ProductionLog, ProductionLogCreate, ProductionLogUpdate
@@ -15,7 +15,7 @@ from .factory_rate import FactoryRate, FactoryRateCreate, FactoryRateUpdate
 from .other_expense import OtherExpense, OtherExpenseCreate, OtherExpenseUpdate
 
 __all__ = [
-    'User', 'UserCreate', 'UserLogin', 'UserResponse',
+    'User', 'UserCreate', 'UserLogin', 'UserResponse', 'Token',
     'Factory', 'FactoryCreate', 'FactoryUpdate',
     'ProductDefinition', 'ProductDefinitionCreate', 'ProductDefinitionUpdate',
     'ProductionLog', 'ProductionLogCreate', 'ProductionLogUpdate',
