@@ -179,25 +179,41 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     setCustomers(Array.from(customerMap.values()).sort((a, b) => b.total_sales - a.total_sales));
   };
 
-  const loadCustomers = () => {
-    // Build customer options from existing sales data
-    const uniqueCustomers = new Map<string, { name: string; phone: string }>();
-    sales.forEach(sale => {
-      if (!uniqueCustomers.has(sale.customer_name)) {
-        uniqueCustomers.set(sale.customer_name, {
-          name: sale.customer_name,
-          phone: sale.customer_phone || ''
-        });
-      }
-    });
+  const loadCustomers = async () => {
+    if (!factoryId) return;
     
-    const options = Array.from(uniqueCustomers.values()).map(c => ({
-      value: c.name,
-      label: c.name,
-      phone: c.phone
-    }));
-    
-    setCustomerOptions(options);
+    try {
+      // Fetch customers from the customers table
+      const customersData = await customerApi.getByFactory(factoryId);
+      
+      const options = customersData.map(c => ({
+        value: c.name,
+        label: c.name,
+        phone: c.phone || ''
+      }));
+      
+      setCustomerOptions(options);
+    } catch (error: any) {
+      console.error('Error loading customers:', error);
+      // Fallback to building from sales if customers API fails
+      const uniqueCustomers = new Map<string, { name: string; phone: string }>();
+      sales.forEach(sale => {
+        if (!uniqueCustomers.has(sale.customer_name)) {
+          uniqueCustomers.set(sale.customer_name, {
+            name: sale.customer_name,
+            phone: sale.customer_phone || ''
+          });
+        }
+      });
+      
+      const options = Array.from(uniqueCustomers.values()).map(c => ({
+        value: c.name,
+        label: c.name,
+        phone: c.phone
+      }));
+      
+      setCustomerOptions(options);
+    }
   };
 
   const loadCustomerSales = async (customerName: string) => {
