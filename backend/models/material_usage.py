@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import datetime, date
 
 class MaterialUsageBase(BaseModel):
@@ -18,5 +19,3 @@ class MaterialUsage(MaterialUsageBase):
     
     class Config:
         from_attributes = True
-
-from typing import Optional
