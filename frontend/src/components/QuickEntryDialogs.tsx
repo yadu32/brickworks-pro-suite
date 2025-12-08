@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddCustomerDialog } from '@/components/AddCustomerDialog';
 import { AddEmployeeDialog } from '@/components/AddEmployeeDialog';
+import { useFactory } from '@/hooks/useFactory';
+import { productApi, productionApi, materialApi, saleApi, employeeApi, customerApi } from '@/api';
 
 interface QuickEntryDialogsProps {
   type: 'sale' | 'production' | 'usage' | 'payment' | null;
