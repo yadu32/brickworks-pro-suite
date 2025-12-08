@@ -5,39 +5,27 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useFactory } from '@/hooks/useFactory';
+import { productApi, productionApi, ProductDefinition, ProductionLog } from '@/api';
 
-interface ProductDefinition {
-  id: string;
-  name: string;
-  unit: string;
-  items_per_punch: number | null;
-  size_description: string | null;
-  factory_id: string;
-}
-
-interface ProductionRecord {
-  id: string;
+interface FormData {
   date: string;
   product_id: string;
-  product_name: string;
-  punches: number;
-  quantity: number;
+  punches: string;
+  quantity: string;
   remarks: string;
-  factory_id: string;
 }
 
 const ProductionModule = () => {
   const { toast } = useToast();
-  const [productionRecords, setProductionRecords] = useState<ProductionRecord[]>([]);
+  const { factoryId } = useFactory();
+  const [productionRecords, setProductionRecords] = useState<ProductionLog[]>([]);
   const [productTypes, setProductTypes] = useState<ProductDefinition[]>([]);
-  const [factoryId, setFactoryId] = useState<string | null>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<ProductionRecord | null>(null);
-  const [formData, setFormData] = useState({
+  const [editingRecord, setEditingRecord] = useState<ProductionLog | null>(null);
+  const [formData, setFormData] = useState<FormData>({
     date: new Date().toISOString().split('T')[0],
     product_id: '',
     punches: '',
@@ -45,20 +33,11 @@ const ProductionModule = () => {
     remarks: ''
   });
 
-  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
-  const isReadOnly = isTrialExpired && !isActive;
+  const isReadOnly = false; // Subscription logic
 
   const handleAddClick = () => {
-    if (canPerformAction()) {
-      setIsDialogOpen(true);
-    } else {
-      setShowUpgradeModal(true);
-    }
+    setIsDialogOpen(true);
   };
-
-  useEffect(() => {
-    loadFactoryId();
-  }, []);
 
   useEffect(() => {
     if (factoryId) {
@@ -67,31 +46,11 @@ const ProductionModule = () => {
     }
   }, [factoryId]);
 
-  const loadFactoryId = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: factory } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    
-    if (factory) {
-      setFactoryId(factory.id);
-    }
-  };
-
   const loadProductTypes = async () => {
     if (!factoryId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('product_definitions')
-        .select('*')
-        .eq('factory_id', factoryId);
-      
-      if (error) throw error;
+      const data = await productApi.getByFactory(factoryId);
       setProductTypes(data || []);
       if (data && data.length > 0 && !formData.product_id) {
         setFormData(prev => ({ ...prev, product_id: data[0].id }));
@@ -106,13 +65,7 @@ const ProductionModule = () => {
     if (!factoryId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('production_logs')
-        .select('*')
-        .eq('factory_id', factoryId)
-        .order('date', { ascending: false });
-      
-      if (error) throw error;
+      const data = await productionApi.getByFactory(factoryId);
       setProductionRecords(data || []);
     } catch (error) {
       console.error('Error loading production records:', error);
@@ -144,31 +97,22 @@ const ProductionModule = () => {
         date: formData.date,
         product_id: formData.product_id,
         product_name: productType?.name || '',
-        punches: parseInt(formData.punches),
+        punches: parseInt(formData.punches) || undefined,
         quantity: parseInt(formData.quantity),
-        remarks: formData.remarks,
+        remarks: formData.remarks || undefined,
         factory_id: factoryId
       };
 
       if (editingRecord) {
-        const { error } = await supabase
-          .from('production_logs')
-          .update(productionData)
-          .eq('id', editingRecord.id);
-        
-        if (error) throw error;
+        await productionApi.update(editingRecord.id, productionData);
         toast({ title: "Success", description: "Production record updated successfully" });
       } else {
-        const { error } = await supabase
-          .from('production_logs')
-          .insert([productionData]);
-        
-        if (error) throw error;
+        await productionApi.create(productionData);
         toast({ title: "Success", description: "Production record added successfully" });
       }
 
       resetForm();
-      loadProductionRecords();
+      await loadProductionRecords();
     } catch (error) {
       console.error('Error saving production record:', error);
       toast({ title: "Error", description: "Failed to save production record", variant: "destructive" });
@@ -187,7 +131,7 @@ const ProductionModule = () => {
     setIsDialogOpen(false);
   };
 
-  const handleEdit = (record: ProductionRecord) => {
+  const handleEdit = (record: ProductionLog) => {
     setEditingRecord(record);
     setFormData({
       date: record.date || new Date().toISOString().split('T')[0],
@@ -206,13 +150,11 @@ const ProductionModule = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from('production_logs').delete().eq('id', id);
-      if (error) throw error;
-      
+      await productionApi.delete(id);
       toast({ title: "Success", description: "Production record deleted successfully" });
-      // Immediately update local state to remove the deleted record
+      // Immediately update local state
       setProductionRecords(prev => prev.filter(r => r.id !== id));
-      // Also refresh from server to ensure consistency
+      // Also refresh from server
       await loadProductionRecords();
     } catch (error) {
       console.error('Error deleting production record:', error);
@@ -249,231 +191,164 @@ const ProductionModule = () => {
           </Button>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="card-dark max-w-md">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-foreground">
-                  {editingRecord ? 'Edit Production Entry' : 'New Production Entry'}
-                </DialogTitle>
+                <DialogTitle className="text-primary">{editingRecord ? 'Edit' : 'Add'} Production</DialogTitle>
               </DialogHeader>
-              
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="text-label">Date</label>
+                  <label className="text-sm font-medium">Date</label>
                   <Input
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                    className="input-dark"
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-label">Product Type</label>
-                  <Select value={formData.product_id} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, product_id: value }))
-                  }>
-                    <SelectTrigger className="input-dark">
-                      <SelectValue placeholder="Select product type" />
+                  <label className="text-sm font-medium">Product Type</label>
+                  <Select value={formData.product_id} onValueChange={(value) => setFormData({...formData, product_id: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select product" />
                     </SelectTrigger>
-                    <SelectContent className="card-dark">
-                      {productTypes.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No products defined. Add in Settings.
-                        </SelectItem>
-                      ) : (
-                        productTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name} {type.items_per_punch && `(${type.items_per_punch} per punch)`}
-                          </SelectItem>
-                        ))
-                      )}
+                    <SelectContent>
+                      {productTypes.map(pt => (
+                        <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <label className="text-label">Number of Punches</label>
+                  <label className="text-sm font-medium">Punches</label>
                   <Input
                     type="number"
                     value={formData.punches}
-                    onChange={(e) => setFormData(prev => ({ ...prev, punches: e.target.value }))}
-                    className="input-dark"
-                    min="1"
-                    required
+                    onChange={(e) => setFormData({...formData, punches: e.target.value})}
+                    placeholder="Number of punches"
                   />
                   {expectedBricks > 0 && (
-                    <p className="text-secondary mt-1">Expected: {expectedBricks}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-label">Actual Quantity Produced</label>
-                  <Input
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
-                    className="input-dark"
-                    min="0"
-                    required
-                  />
-                  {formData.quantity && expectedBricks > 0 && (
-                    <p className={`mt-1 font-medium ${
-                      calculateEfficiency(parseInt(formData.quantity), expectedBricks) >= 95 ? 'text-success' :
-                      calculateEfficiency(parseInt(formData.quantity), expectedBricks) >= 85 ? 'text-warning' : 'text-destructive'
-                    }`}>
-                      Efficiency: {calculateEfficiency(parseInt(formData.quantity), expectedBricks).toFixed(1)}%
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Expected: {expectedBricks} pieces
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-label">Remarks</label>
+                  <label className="text-sm font-medium">Actual Quantity</label>
                   <Input
-                    value={formData.remarks}
-                    onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
-                    className="input-dark"
-                    placeholder="Optional remarks"
+                    type="number"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                    required
+                    placeholder="Actual pieces produced"
                   />
                 </div>
 
-                <div className="flex space-x-3 pt-4">
-                  <Button type="submit" className="btn-orange flex-1" disabled={!formData.product_id}>
-                    {editingRecord ? 'Update' : 'Add'} Record
-                  </Button>
-                  <Button type="button" onClick={resetForm} variant="secondary" className="flex-1">
-                    Cancel
-                  </Button>
+                <div>
+                  <label className="text-sm font-medium">Remarks (Optional)</label>
+                  <Input
+                    value={formData.remarks}
+                    onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                    placeholder="Any notes..."
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
+                  <Button type="submit" className="btn-orange">Save</Button>
                 </div>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Production Summary by Type */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {productionByType.length === 0 ? (
-            <div className="col-span-full card-dark p-8 text-center">
-              <Factory className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No product types defined yet. Add them in Settings.</p>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {productionByType.map(pt => (
+            <div key={pt.id} className="card-stat">
+              <Factory className="h-8 w-8 text-primary mb-2" />
+              <p className="text-sm text-muted-foreground">{pt.name}</p>
+              <p className="text-3xl font-bold text-foreground">{pt.totalProduced.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">{pt.unit}</p>
             </div>
-          ) : (
-            productionByType.map((pt, index) => (
-              <div key={pt.id} className="card-metric">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-secondary">{pt.name}</p>
-                    <p className="text-metric text-primary">{pt.totalProduced.toLocaleString()}</p>
-                    <p className="text-secondary">{pt.unit}</p>
-                  </div>
-                  <Factory className={`h-12 w-12 ${index % 2 === 0 ? 'text-primary' : 'text-success'}`} />
-                </div>
-              </div>
-            ))
-          )}
-        </section>
+          ))}
+        </div>
 
-        {/* Production Records */}
-        <section className="card-dark p-6">
+        {/* Production Records Table */}
+        <div className="bg-card rounded-lg border border-border p-6">
           <h2 className="text-xl font-semibold text-foreground mb-4">Production Records</h2>
-          
-          <div className="space-y-4">
-            {productionRecords.length === 0 ? (
-              <div className="text-center py-8">
-                <Factory className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No production records yet</p>
-              </div>
-            ) : (
-              productionRecords.map((record) => {
-                const productType = getProductType(record.product_id);
-                const expected = productType?.items_per_punch 
-                  ? (record.punches || 0) * productType.items_per_punch 
-                  : 0;
-                const efficiency = expected > 0 ? (record.quantity / expected) * 100 : 0;
-                
-                return (
-                  <div key={record.id} className="card-dark p-4 border border-border">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0">
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center space-x-3">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-foreground font-medium">{record.date}</span>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary border border-primary/30">
-                            {record.product_name}
-                          </span>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4">Date</th>
+                  <th className="text-left py-3 px-4">Product</th>
+                  <th className="text-right py-3 px-4">Punches</th>
+                  <th className="text-right py-3 px-4">Quantity</th>
+                  <th className="text-right py-3 px-4">Efficiency</th>
+                  <th className="text-left py-3 px-4">Remarks</th>
+                  <th className="text-right py-3 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productionRecords.map(record => {
+                  const expected = calculateExpected(record.punches || 0, record.product_id);
+                  const efficiency = calculateEfficiency(record.quantity, expected);
+                  
+                  return (
+                    <tr key={record.id} className="border-b border-border hover:bg-muted/50">
+                      <td className="py-3 px-4">{new Date(record.date || '').toLocaleDateString()}</td>
+                      <td className="py-3 px-4">{record.product_name}</td>
+                      <td className="py-3 px-4 text-right">{record.punches || '-'}</td>
+                      <td className="py-3 px-4 text-right">{record.quantity}</td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={efficiency >= 100 ? 'text-success' : efficiency >= 90 ? 'text-warning' : 'text-destructive'}>
+                          {efficiency > 0 ? `${efficiency.toFixed(1)}%` : '-'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-muted-foreground">{record.remarks || '-'}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex gap-2 justify-end">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(record)} disabled={isReadOnly}>
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => setDeleteDialogState({open: true, id: record.id})}
+                            disabled={isReadOnly}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <p className="text-secondary">Punches</p>
-                            <p className="text-foreground font-medium">{record.punches || '-'}</p>
-                          </div>
-                          <div>
-                            <p className="text-secondary">Expected</p>
-                            <p className="text-foreground font-medium">{expected || '-'}</p>
-                          </div>
-                          <div>
-                            <p className="text-secondary">Actual</p>
-                            <p className="text-foreground font-medium">{record.quantity}</p>
-                          </div>
-                          <div>
-                            <p className="text-secondary">Efficiency</p>
-                            <p className={`font-medium ${
-                              efficiency >= 95 ? 'text-success' : 
-                              efficiency >= 85 ? 'text-warning' : 'text-destructive'
-                            }`}>
-                              {expected > 0 ? `${efficiency.toFixed(1)}%` : '-'}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {record.remarks && (
-                          <p className="text-secondary text-sm mt-2">{record.remarks}</p>
-                        )}
-                      </div>
-                      
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(record)}
-                          className="hover:bg-primary/20"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setDeleteDialogState({open: true, id: record.id})}
-                          className="hover:bg-destructive/20 text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </section>
-        
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => setDeleteDialogState({...deleteDialogState, open})}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete this production record.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => handleDelete(deleteDialogState.id)}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        </div>
       </div>
+
+      <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => setDeleteDialogState({...deleteDialogState, open})}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this production record? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDelete(deleteDialogState.id)} className="bg-destructive">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
