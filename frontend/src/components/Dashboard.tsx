@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon, Lock } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { QuickEntryDialogs } from '@/components/QuickEntryDialogs';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { factoryApi, productApi, productionApi, saleApi, materialApi, employeeApi } from '@/api';
 
 interface QuickActionButtonProps {
   icon: LucideIcon;
