@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,11 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Package } from 'lucide-react';
 import heroImage from '@/assets/hero-factory.jpg';
 
-interface AuthProps {
-  onAuthSuccess: () => void;
-}
-
-const Auth = ({ onAuthSuccess }: AuthProps) => {
+const Auth = () => {
+  const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,32 +28,20 @@ const Auth = ({ onAuthSuccess }: AuthProps) => {
     setLoading(true);
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
+        await login(email, password);
         toast({ title: "Welcome back!" });
-        onAuthSuccess();
       } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
-        if (error) throw error;
+        await register(email, password);
         toast({ 
           title: "Account created!", 
-          description: "Please check your email to verify your account." 
+          description: "Welcome to BrickWorks Manager!" 
         });
       }
     } catch (error: any) {
-      let message = error.message;
-      if (message.includes('Invalid login credentials')) {
+      let message = error.message || 'An error occurred';
+      if (message.includes('Invalid') || message.includes('Incorrect')) {
         message = 'Invalid email or password';
-      } else if (message.includes('User already registered')) {
+      } else if (message.includes('already')) {
         message = 'This email is already registered. Please login instead.';
       }
       toast({ title: "Error", description: message, variant: "destructive" });
