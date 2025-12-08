@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useFactory } from '@/hooks/useFactory';
+import { customerApi } from '@/api';
 
 interface AddCustomerDialogProps {
   open: boolean;
@@ -14,22 +15,11 @@ interface AddCustomerDialogProps {
 
 export function AddCustomerDialog({ open, onOpenChange, onCustomerAdded }: AddCustomerDialogProps) {
   const { toast } = useToast();
-  const [factoryId, setFactoryId] = useState<string | null>(null);
+  const { factoryId } = useFactory();
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_phone: ''
   });
-
-  useEffect(() => {
-    loadFactory();
-  }, []);
-
-  const loadFactory = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase.from('factories').select('id').eq('owner_id', user.id).single();
-    if (data) setFactoryId(data.id);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,21 +28,24 @@ export function AddCustomerDialog({ open, onOpenChange, onCustomerAdded }: AddCu
       return;
     }
 
-    const { error } = await supabase.from('customers').insert({
-      factory_id: factoryId,
-      name: formData.customer_name,
-      phone: formData.customer_phone || null
-    });
+    try {
+      await customerApi.create({
+        factory_id: factoryId,
+        name: formData.customer_name,
+        phone: formData.customer_phone || undefined
+      });
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
+      toast({ title: 'Customer added' });
+      onCustomerAdded(formData.customer_name, formData.customer_phone);
+      setFormData({ customer_name: '', customer_phone: '' });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || 'Failed to add customer', 
+        variant: 'destructive' 
+      });
     }
-
-    toast({ title: 'Customer added' });
-    onCustomerAdded(formData.customer_name, formData.customer_phone);
-    setFormData({ customer_name: '', customer_phone: '' });
-    onOpenChange(false);
   };
 
   return (
