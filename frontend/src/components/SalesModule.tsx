@@ -359,16 +359,16 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   });
 
   const deleteSale = async (id: string) => {
-    const { error } = await supabase
-      .from('sales')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      toast({ title: 'Error deleting sale', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await saleApi.delete(id);
       await loadSales();
       toast({ title: 'Sale deleted successfully' });
+    } catch (error: any) {
+      toast({ 
+        title: 'Error deleting sale', 
+        description: error.response?.data?.detail || 'Failed to delete', 
+        variant: 'destructive' 
+      });
     }
     setDeleteDialogState({open: false, id: ''});
   };
