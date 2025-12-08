@@ -9,15 +9,18 @@ import {
   Settings,
   TrendingDown,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
+import { useFactory } from '@/hooks/useFactory';
 
 interface NavigationProps {
   activeTab: string;
@@ -25,26 +28,9 @@ interface NavigationProps {
 }
 
 const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
-  const [factoryName, setFactoryName] = useState<string>('BrickWorks Manager');
-
-  useEffect(() => {
-    loadFactoryName();
-  }, []);
-
-  const loadFactoryName = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('factories')
-      .select('name')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (data?.name) {
-      setFactoryName(data.name);
-    }
-  };
+  const { factory } = useFactory();
+  const { logout } = useAuth();
+  const factoryName = factory?.name || 'BrickWorks Manager';
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
