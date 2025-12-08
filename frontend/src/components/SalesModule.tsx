@@ -847,7 +847,7 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
           onOpenChange={setIsAddCustomerOpen}
           onCustomerAdded={(name, phone) => {
             setSaleForm({ ...saleForm, customer_name: name, customer_phone: phone });
-            // loadCustomers will be called automatically via useEffect when sales changes
+            loadCustomers(); // Reload customer list
           }}
         />
       </div>
