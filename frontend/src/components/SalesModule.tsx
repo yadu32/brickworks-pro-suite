@@ -299,101 +299,58 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const totalAmount = Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick);
-    const amountReceived = Number(saleForm.amount_received);
-    
-    if (editingSale) {
-      // For editing, just update the record without FIFO logic
-      const balanceDue = totalAmount - amountReceived;
-      const saleData = {
-        date: saleForm.date,
-        customer_name: saleForm.customer_name,
-        customer_phone: saleForm.customer_phone,
-        product_id: saleForm.product_id,
-        quantity_sold: Number(saleForm.quantity_sold),
-        rate_per_brick: Number(saleForm.rate_per_brick),
-        total_amount: totalAmount,
-        amount_received: amountReceived,
-        balance_due: balanceDue,
-        notes: saleForm.notes
-      };
-
-      const { error } = await supabase
-        .from('sales')
-        .update(saleData)
-        .eq('id', editingSale.id);
-      
-      if (error) {
-        toast({ title: 'Error updating sale', description: error.message, variant: 'destructive' });
-        return;
-      }
-    } else {
-      if (!factoryId) {
-        toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
-        return;
-      }
-      
-      // For new sales, implement FIFO payment logic
-      
-      // First, create the sale with full balance due (we'll adjust after FIFO)
-      const initialSaleData = {
-        date: saleForm.date,
-        customer_name: saleForm.customer_name,
-        customer_phone: saleForm.customer_phone,
-        product_id: saleForm.product_id,
-        quantity_sold: Number(saleForm.quantity_sold),
-        rate_per_brick: Number(saleForm.rate_per_brick),
-        total_amount: totalAmount,
-        amount_received: 0, // Start with 0, will be updated by FIFO
-        balance_due: totalAmount, // Start with full amount
-        notes: saleForm.notes,
-        factory_id: factoryId
-      };
-
-      const { data: newSale, error: insertError } = await supabase
-        .from('sales')
-        .insert([initialSaleData])
-        .select()
-        .single();
-      
-      if (insertError) {
-        toast({ title: 'Error adding sale', description: insertError.message, variant: 'destructive' });
-        return;
-      }
-
-      // Apply FIFO payment logic if there's a payment
-      if (amountReceived > 0) {
-        const remainingPayment = await applyFIFOPayments(saleForm.customer_name, amountReceived, newSale.id);
-        
-        // Apply any remaining payment to the new sale
-        if (remainingPayment > 0) {
-          const newSalePayment = Math.min(remainingPayment, totalAmount);
-          await supabase
-            .from('sales')
-            .update({
-              amount_received: newSalePayment,
-              balance_due: totalAmount - newSalePayment
-            })
-            .eq('id', newSale.id);
-        }
-      }
+    if (!factoryId) {
+      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
+      return;
     }
-
-    await loadSales();
-    setIsDialogOpen(false);
-    setEditingSale(null);
-    setSaleForm({
-      date: new Date().toISOString().split('T')[0],
-      customer_name: '',
-      customer_phone: '',
-      product_id: '',
-      quantity_sold: '',
-      rate_per_brick: '',
-      amount_received: '',
-      notes: ''
-    });
     
-    toast({ title: editingSale ? 'Sale updated successfully' : 'Sale added successfully' });
+    const totalAmount = Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick);
+    const amountReceived = Number(saleForm.amount_received) || 0;
+    const balanceDue = totalAmount - amountReceived;
+    
+    const saleData = {
+      date: saleForm.date,
+      customer_name: saleForm.customer_name,
+      customer_phone: saleForm.customer_phone,
+      product_id: saleForm.product_id,
+      quantity_sold: Number(saleForm.quantity_sold),
+      rate_per_brick: Number(saleForm.rate_per_brick),
+      total_amount: totalAmount,
+      amount_received: amountReceived,
+      balance_due: balanceDue,
+      notes: saleForm.notes,
+      factory_id: factoryId
+    };
+
+    try {
+      if (editingSale) {
+        await saleApi.update(editingSale.id, saleData);
+        toast({ title: 'Sale updated successfully' });
+      } else {
+        await saleApi.create(saleData);
+        toast({ title: 'Sale added successfully' });
+      }
+
+      await loadSales();
+      setIsDialogOpen(false);
+      setEditingSale(null);
+      setSaleForm({
+        date: new Date().toISOString().split('T')[0],
+        customer_name: '',
+        customer_phone: '',
+        product_id: '',
+        quantity_sold: '',
+        rate_per_brick: '',
+        amount_received: '',
+        notes: ''
+      });
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || 'Failed to save sale', 
+        variant: 'destructive' 
+      });
+    }
   };
 
   const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
