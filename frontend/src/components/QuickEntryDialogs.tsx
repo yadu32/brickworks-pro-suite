@@ -101,28 +101,26 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
     e.preventDefault();
     if (!factoryId) return;
 
-    const selectedProduct = products.find(p => p.id === saleForm.product_id);
-
-    const { error } = await supabase.from('sales').insert([{
-      factory_id: factoryId,
-      date: saleForm.date,
-      customer_name: saleForm.customer_name,
-      customer_phone: saleForm.customer_phone || null,
-      product_id: saleForm.product_id,
-      quantity_sold: Number(saleForm.quantity_sold),
-      rate_per_brick: Number(saleForm.rate_per_brick),
-      total_amount: Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick),
-      amount_received: Number(saleForm.amount_received || 0),
-      balance_due: (Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick)) - Number(saleForm.amount_received || 0),
-      notes: saleForm.notes || null
-    }]);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await saleApi.create({
+        factory_id: factoryId,
+        date: saleForm.date,
+        customer_name: saleForm.customer_name,
+        customer_phone: saleForm.customer_phone || undefined,
+        product_id: saleForm.product_id,
+        quantity_sold: Number(saleForm.quantity_sold),
+        rate_per_brick: Number(saleForm.rate_per_brick),
+        total_amount: Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick),
+        amount_received: Number(saleForm.amount_received || 0),
+        balance_due: (Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick)) - Number(saleForm.amount_received || 0),
+        notes: saleForm.notes || undefined
+      });
+      
       toast({ title: 'Sale added successfully' });
       onSuccess();
       onClose();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to add sale', variant: 'destructive' });
     }
   };
 
@@ -132,22 +130,22 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
 
     const selectedProduct = products.find(p => p.id === productionForm.product_id);
 
-    const { error } = await supabase.from('production_logs').insert([{
-      factory_id: factoryId,
-      date: productionForm.date,
-      product_id: productionForm.product_id,
-      product_name: selectedProduct?.name || '',
-      punches: Number(productionForm.punches) || null,
-      quantity: Number(productionForm.quantity),
-      remarks: productionForm.remarks || null
-    }]);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await productionApi.create({
+        factory_id: factoryId,
+        date: productionForm.date,
+        product_id: productionForm.product_id,
+        product_name: selectedProduct?.name || '',
+        punches: Number(productionForm.punches) || undefined,
+        quantity: Number(productionForm.quantity),
+        remarks: productionForm.remarks || undefined
+      });
+      
       toast({ title: 'Production recorded successfully' });
       onSuccess();
       onClose();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to record production', variant: 'destructive' });
     }
   };
 
@@ -155,20 +153,20 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
     e.preventDefault();
     if (!factoryId) return;
 
-    const { error } = await supabase.from('material_usage').insert([{
-      factory_id: factoryId,
-      date: usageForm.date,
-      material_id: usageForm.material_id,
-      quantity_used: Number(usageForm.quantity_used),
-      purpose: usageForm.purpose
-    }]);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await materialApi.createUsage({
+        factory_id: factoryId,
+        date: usageForm.date,
+        material_id: usageForm.material_id,
+        quantity_used: Number(usageForm.quantity_used),
+        purpose: usageForm.purpose
+      });
+      
       toast({ title: 'Material usage recorded successfully' });
       onSuccess();
       onClose();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to record usage', variant: 'destructive' });
     }
   };
 
@@ -176,21 +174,21 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
     e.preventDefault();
     if (!factoryId) return;
 
-    const { error } = await supabase.from('employee_payments').insert([{
-      factory_id: factoryId,
-      date: paymentForm.date,
-      employee_name: paymentForm.employee_name,
-      amount: Number(paymentForm.amount),
-      payment_type: paymentForm.payment_type,
-      notes: paymentForm.notes || null
-    }]);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await employeeApi.createPayment({
+        factory_id: factoryId,
+        date: paymentForm.date,
+        employee_name: paymentForm.employee_name,
+        amount: Number(paymentForm.amount),
+        payment_type: paymentForm.payment_type,
+        notes: paymentForm.notes || undefined
+      });
+      
       toast({ title: 'Payment recorded successfully' });
       onSuccess();
       onClose();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to record payment', variant: 'destructive' });
     }
   };
 
