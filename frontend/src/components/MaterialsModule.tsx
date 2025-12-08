@@ -265,45 +265,35 @@ const MaterialsModule = () => {
       factory_id: factoryId
     };
 
-    if (editingPurchase) {
-      const { error } = await supabase
-        .from('material_purchases')
-        .update(purchaseData)
-        .eq('id', editingPurchase.id);
-      
-      if (error) {
-        toast({ title: 'Error updating purchase', description: error.message, variant: 'destructive' });
+    try {
+      if (editingPurchase) {
+        // Note: Update endpoint needs to be created if needed
+        toast({ title: 'Update functionality coming soon' });
         return;
+      } else {
+        await materialApi.createPurchase(purchaseData);
       }
-    } else {
-      const { error } = await supabase
-        .from('material_purchases')
-        .insert([purchaseData]);
-      
-      if (error) {
-        toast({ title: 'Error adding purchase', description: error.message, variant: 'destructive' });
-        return;
-      }
-    }
 
-    await updateMaterialStock(purchaseForm.material_id);
-    await loadPurchases();
-    await loadMaterials();
-    
-    setIsPurchaseDialogOpen(false);
-    setEditingPurchase(null);
-    setPurchaseForm({
-      date: new Date().toISOString().split('T')[0],
-      material_id: '',
-      quantity_purchased: '',
-      unit_cost: '',
-      supplier_name: '',
-      supplier_phone: '',
-      payment_made: '',
-      notes: ''
-    });
-    
-    toast({ title: editingPurchase ? 'Purchase updated successfully' : 'Purchase added successfully' });
+      await loadPurchases();
+      await loadMaterials();
+      
+      setIsPurchaseDialogOpen(false);
+      setEditingPurchase(null);
+      setPurchaseForm({
+        date: new Date().toISOString().split('T')[0],
+        material_id: '',
+        quantity_purchased: '',
+        unit_cost: '',
+        supplier_name: '',
+        supplier_phone: '',
+        payment_made: '',
+        notes: ''
+      });
+      
+      toast({ title: editingPurchase ? 'Purchase updated successfully' : 'Purchase added successfully' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to save purchase', variant: 'destructive' });
+    }
   };
 
   const handleUsageSubmit = async (e: React.FormEvent) => {
