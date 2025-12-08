@@ -73,11 +73,17 @@ const MaterialsModule = () => {
   const [payAmount, setPayAmount] = useState('');
   
   const { toast } = useToast();
-  const { isTrialExpired, isActive, setShowUpgradeModal, canPerformAction } = useSubscription();
-  const isReadOnly = isTrialExpired && !isActive;
+  const { factoryId: hookFactoryId } = useFactory();
+  const isReadOnly = false;
+
+  useEffect(() => {
+    if (hookFactoryId) {
+      setFactoryId(hookFactoryId);
+    }
+  }, [hookFactoryId]);
 
   const handleAddPurchaseClick = () => {
-    if (canPerformAction()) {
+    if (true) {
       setIsPurchaseDialogOpen(true);
     } else {
       setShowUpgradeModal(true);
