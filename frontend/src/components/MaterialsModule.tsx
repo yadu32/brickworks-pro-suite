@@ -8,10 +8,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddSupplierDialog } from '@/components/AddSupplierDialog';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useFactory } from '@/hooks/useFactory';
+import { materialApi, supplierApi } from '@/api';
 
 interface Material {
   id: string;
