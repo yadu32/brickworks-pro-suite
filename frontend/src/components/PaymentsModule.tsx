@@ -209,16 +209,12 @@ const PaymentsModule = () => {
   });
 
   const deletePayment = async (id: string) => {
-    const { error } = await supabase
-      .from('employee_payments')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      toast({ title: 'Error deleting payment', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await employeeApi.deletePayment(id);
       await loadPayments();
       toast({ title: 'Payment deleted successfully' });
+    } catch (error: any) {
+      toast({ title: 'Error deleting payment', description: error.response?.data?.detail || 'Failed to delete', variant: 'destructive' });
     }
     setDeleteDialogState({open: false, id: ''});
   };
