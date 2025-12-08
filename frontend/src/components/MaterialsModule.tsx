@@ -342,35 +342,25 @@ const MaterialsModule = () => {
   });
 
   const deletePurchase = async (id: string, materialId: string) => {
-    const { error } = await supabase
-      .from('material_purchases')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      toast({ title: 'Error deleting purchase', description: error.message, variant: 'destructive' });
-    } else {
-      await updateMaterialStock(materialId);
+    try {
+      await materialApi.deletePurchase(id);
       await loadPurchases();
       await loadMaterials();
       toast({ title: 'Purchase deleted successfully' });
+    } catch (error: any) {
+      toast({ title: 'Error deleting purchase', description: error.response?.data?.detail || 'Failed to delete', variant: 'destructive' });
     }
     setDeleteDialogState({open: false, id: '', materialId: '', type: 'purchase'});
   };
 
   const deleteUsage = async (id: string, materialId: string) => {
-    const { error } = await supabase
-      .from('material_usage')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      toast({ title: 'Error deleting usage', description: error.message, variant: 'destructive' });
-    } else {
-      await updateMaterialStock(materialId);
+    try {
+      await materialApi.deleteUsage(id);
       await loadUsage();
       await loadMaterials();
       toast({ title: 'Usage deleted successfully' });
+    } catch (error: any) {
+      toast({ title: 'Error deleting usage', description: error.response?.data?.detail || 'Failed to delete', variant: 'destructive' });
     }
     setDeleteDialogState({open: false, id: '', materialId: '', type: 'usage'});
   };
