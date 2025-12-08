@@ -308,41 +308,30 @@ const MaterialsModule = () => {
       factory_id: factoryId
     };
 
-    if (editingUsage) {
-      const { error } = await supabase
-        .from('material_usage')
-        .update(usageData)
-        .eq('id', editingUsage.id);
-      
-      if (error) {
-        toast({ title: 'Error updating usage', description: error.message, variant: 'destructive' });
+    try {
+      if (editingUsage) {
+        toast({ title: 'Update functionality coming soon' });
         return;
+      } else {
+        await materialApi.createUsage(usageData);
       }
-    } else {
-      const { error } = await supabase
-        .from('material_usage')
-        .insert([usageData]);
-      
-      if (error) {
-        toast({ title: 'Error adding usage', description: error.message, variant: 'destructive' });
-        return;
-      }
-    }
 
-    await updateMaterialStock(usageForm.material_id);
-    await loadUsage();
-    await loadMaterials();
-    
-    setIsUsageDialogOpen(false);
-    setEditingUsage(null);
-    setUsageForm({
-      date: new Date().toISOString().split('T')[0],
-      material_id: '',
-      quantity_used: '',
-      purpose: ''
-    });
-    
-    toast({ title: editingUsage ? 'Usage updated successfully' : 'Usage added successfully' });
+      await loadUsage();
+      await loadMaterials();
+      
+      setIsUsageDialogOpen(false);
+      setEditingUsage(null);
+      setUsageForm({
+        date: new Date().toISOString().split('T')[0],
+        material_id: '',
+        quantity_used: '',
+        purpose: ''
+      });
+      
+      toast({ title: editingUsage ? 'Usage updated successfully' : 'Usage added successfully' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to save usage', variant: 'destructive' });
+    }
   };
 
   const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string, materialId: string, type: 'purchase' | 'usage'}>({
