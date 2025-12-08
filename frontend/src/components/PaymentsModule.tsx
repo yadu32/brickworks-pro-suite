@@ -150,10 +150,9 @@ const PaymentsModule = () => {
   const loadEmployeePayments = async (employeeName: string) => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('employee_payments')
-      .select('*')
-      .eq('factory_id', factoryId)
+    try {
+      const data = await employeeApi.getPayments(factoryId);
+      const filtered = data.filter(p => p.employee_name === employeeName)
       .ilike('employee_name', employeeName)
       .order('date', { ascending: false });
     
