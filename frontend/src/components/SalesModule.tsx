@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Mail, Search, X, DollarSign, Lock } from 'lucide-react';
+import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Mail, Search, X, DollarSign, Lock, UserPlus } from 'lucide-react';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,11 +9,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { generateInvoicePDF, shareViaWhatsApp, shareViaEmail, downloadPDF } from '@/utils/invoiceGenerator';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddCustomerDialog } from '@/components/AddCustomerDialog';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useFactory } from '@/hooks/useFactory';
+import { saleApi, customerApi, productApi } from '@/api';
 
 interface ProductType {
   id: string;
