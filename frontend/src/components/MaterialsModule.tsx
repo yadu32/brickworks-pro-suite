@@ -204,26 +204,22 @@ const MaterialsModule = () => {
   const loadSuppliers = async () => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('suppliers')
-      .select('name, contact_number')
-      .eq('factory_id', factoryId)
-      .order('name');
-    
-    if (error) {
+    try {
+      const data = await supplierApi.getByFactory(factoryId);
+      
+      if (data && data.length > 0) {
+        setSupplierOptions(
+          data.map(s => ({
+            value: s.name,
+            label: s.name
+          }))
+        );
+      } else {
+        // Set empty array if no suppliers found
+        setSupplierOptions([]);
+      }
+    } catch (error) {
       console.error('Error loading suppliers:', error);
-      return;
-    }
-    
-    if (data && data.length > 0) {
-      setSupplierOptions(
-        data.map(s => ({
-          value: s.name,
-          label: s.name
-        }))
-      );
-    } else {
-      // Set empty array if no suppliers found
       setSupplierOptions([]);
     }
   };
