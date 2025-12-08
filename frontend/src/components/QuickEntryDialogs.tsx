@@ -63,68 +63,37 @@ export function QuickEntryDialogs({ type, onClose, onSuccess }: QuickEntryDialog
   });
 
   useEffect(() => {
-    loadFactory();
-  }, []);
-
-  useEffect(() => {
     if (type && factoryId) {
       loadInitialData();
     }
   }, [type, factoryId]);
 
-  const loadFactory = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (data) {
-      setFactoryId(data.id);
-    }
-  };
-
   const loadInitialData = async () => {
     if (!factoryId) return;
 
-    // Load products (brick types) for this factory
-    const { data: productData } = await supabase
-      .from('product_definitions')
-      .select('*')
-      .eq('factory_id', factoryId);
-    if (productData) setProducts(productData);
+    try {
+      // Load products (brick types) for this factory
+      const productData = await productApi.getByFactory(factoryId);
+      setProducts(productData || []);
 
-    // Load materials for this factory
-    const { data: materialData } = await supabase
-      .from('materials')
-      .select('*')
-      .eq('factory_id', factoryId);
-    if (materialData) setMaterials(materialData);
+      // Load materials for this factory
+      const materialData = await materialApi.getByFactory(factoryId);
+      setMaterials(materialData || []);
 
-    // Load customers for this factory
-    const { data: customersData } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('factory_id', factoryId);
-    if (customersData) {
+      // Load customers for this factory
+      const customersData = await customerApi.getByFactory(factoryId);
       setCustomerOptions(customersData.map(c => ({
         value: c.name,
         label: c.name,
         phone: c.phone || ''
       })));
-    }
 
-    // Load employees for this factory
-    const { data: employeesData } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('factory_id', factoryId)
-      .eq('is_active', true);
-    if (employeesData) {
-      setEmployeeOptions(employeesData.map(e => ({ value: e.name, label: e.name })));
+      // Load employees for this factory
+      const employeesData = await employeeApi.getByFactory(factoryId);
+      const activeEmployees = employeesData.filter(e => e.is_active);
+      setEmployeeOptions(activeEmployees.map(e => ({ value: e.name, label: e.name })));
+    } catch (error) {
+      console.error('Error loading initial data:', error);
     }
   };
 
