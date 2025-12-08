@@ -84,43 +84,23 @@ const PaymentsModule = () => {
   };
 
   const loadFactoryId = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: factory } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    
-    if (factory) {
-      setFactoryId(factory.id);
-    }
+    // Factory ID is loaded via useFactory hook
   };
 
   const loadPayments = async () => {
     if (!factoryId) return;
     
-    let query = supabase
-      .from('employee_payments')
-      .select('*')
-      .eq('factory_id', factoryId)
-      .order('date', { ascending: false });
-
-    if (dateFilter.start) {
-      query = query.gte('date', dateFilter.start);
-    }
-    if (dateFilter.end) {
-      query = query.lte('date', dateFilter.end);
-    }
-
-    const { data, error } = await query;
-    
-    if (error) {
-      toast({ title: 'Error loading payments', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const data = await employeeApi.getPayments(
+        factoryId,
+        dateFilter.start || undefined,
+        dateFilter.end || undefined
+      );
+      
       setPayments(data || []);
       calculateEmployeeSummaries(data || []);
+    } catch (error: any) {
+      toast({ title: 'Error loading payments', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
   };
 
