@@ -219,19 +219,22 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   const loadCustomerSales = async (customerName: string) => {
     if (!factoryId) return;
     
-    const { data, error } = await supabase
-      .from('sales')
-      .select(`
-        *,
-        product_definitions (
-          id,
-          name,
-          unit
-        )
-      `)
-      .eq('factory_id', factoryId)
-      .eq('customer_name', customerName)
-      .order('date', { ascending: true });
+    try {
+      const salesData = await saleApi.getByFactory(factoryId);
+      const products = await productApi.getByFactory(factoryId);
+      
+      const filtered = salesData
+        .filter(s => s.customer_name === customerName)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      const enriched = filtered.map(sale => ({
+        ...sale,
+        product_definitions: products.find(p => p.id === sale.product_id) || {
+          id: sale.product_id,
+          name: 'Unknown',
+          unit: 'pieces'
+        }
+      }));
     
     if (error) {
       toast({ title: 'Error loading customer sales', description: error.message, variant: 'destructive' });
