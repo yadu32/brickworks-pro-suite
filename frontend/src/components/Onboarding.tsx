@@ -30,6 +30,8 @@ const Onboarding = ({ userId, onComplete }: OnboardingProps) => {
   // Step 1: Factory Details
   const [factoryName, setFactoryName] = useState('');
   const [location, setLocation] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
 
   // Step 2: Brick Types
   const [brickTypes, setBrickTypes] = useState<BrickTypeInput[]>([
