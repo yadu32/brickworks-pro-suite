@@ -118,12 +118,14 @@ const Onboarding = ({ userId, onComplete }: OnboardingProps) => {
       const { expenseApi } = await import('@/api/expense');
 
       // STEP 1: Create factory FIRST (CRITICAL - must complete before anything else)
-      console.log('Step 1: Creating factory...', { name: factoryName, location });
+      console.log('Step 1: Creating factory...', { name: factoryName, location, ownerName, contactNumber });
       let factory;
       try {
         factory = await factoryApi.create({
           name: factoryName,
           location: location || undefined,
+          owner_name: ownerName || undefined,
+          contact_number: contactNumber || undefined,
         });
         console.log('Factory created successfully:', factory);
       } catch (error: any) {
