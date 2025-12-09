@@ -157,24 +157,19 @@ export const SettingsHub = () => {
   const loadRates = async () => {
     if (!factory) return;
     
-    const { data, error } = await supabase
-      .from("factory_rates")
-      .select("*")
-      .eq("factory_id", factory.id)
-      .eq("is_active", true)
-      .order("effective_date", { ascending: false });
-
-    if (error) {
-      toast({ title: "Error loading rates", description: error.message, variant: "destructive" });
-      return;
-    }
-
-    if (data) {
-      setRates(data);
-      const prodRate = data.find((r) => r.rate_type === "production_per_punch");
-      const loadRate = data.find((r) => r.rate_type === "loading_per_brick");
-      if (prodRate) setProductionRate(prodRate.rate_amount);
-      if (loadRate) setLoadingRate(loadRate.rate_amount);
+    try {
+      const { expenseApi } = await import('@/api/expense');
+      const data = await expenseApi.getRates(factory.id);
+      
+      if (data) {
+        setRates(data);
+        const prodRate = data.find((r: any) => r.rate_type === "production_per_punch");
+        const loadRate = data.find((r: any) => r.rate_type === "loading_per_brick");
+        if (prodRate) setProductionRate(prodRate.rate_amount);
+        if (loadRate) setLoadingRate(loadRate.rate_amount);
+      }
+    } catch (error: any) {
+      toast({ title: "Error loading rates", description: error.message || "Failed to load", variant: "destructive" });
     }
   };
 
