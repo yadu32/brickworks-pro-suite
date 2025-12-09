@@ -145,17 +145,13 @@ export const SettingsHub = () => {
   const loadMaterials = async () => {
     if (!factory) return;
     
-    const { data, error } = await supabase
-      .from("materials")
-      .select("*")
-      .eq("factory_id", factory.id)
-      .order("material_name");
-
-    if (error) {
-      toast({ title: "Error loading materials", description: error.message, variant: "destructive" });
-      return;
+    try {
+      const { materialApi } = await import('@/api/material');
+      const data = await materialApi.getByFactory(factory.id);
+      setMaterials(data || []);
+    } catch (error: any) {
+      toast({ title: "Error loading materials", description: error.message || "Failed to load", variant: "destructive" });
     }
-    setMaterials(data || []);
   };
 
   const loadRates = async () => {
