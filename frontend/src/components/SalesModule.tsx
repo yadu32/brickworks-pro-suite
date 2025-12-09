@@ -697,13 +697,6 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
           <div className="flex justify-between items-center flex-wrap gap-3">
             <h1 className="text-3xl font-bold text-foreground">Sales Management</h1>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsAddCustomerOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Customer
-              </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="btn-primary">
