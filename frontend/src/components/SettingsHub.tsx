@@ -280,33 +280,28 @@ export const SettingsHub = () => {
 
     setIsLoading(true);
     try {
+      const { materialApi } = await import('@/api/material');
+      
       if (editingMaterial) {
-        const { error } = await supabase
-          .from("materials")
-          .update({
-            material_name: materialName,
-            unit: materialUnit,
-          })
-          .eq("id", editingMaterial.id);
-
-        if (error) throw error;
+        await materialApi.update(editingMaterial.id, {
+          material_name: materialName,
+          unit: materialUnit,
+        });
         toast({ title: "Material updated successfully" });
       } else {
-        const { error } = await supabase.from("materials").insert({
+        await materialApi.create({
           factory_id: factory.id,
           material_name: materialName,
           unit: materialUnit,
           current_stock_qty: 0,
           average_cost_per_unit: 0,
         });
-
-        if (error) throw error;
         toast({ title: "Material added successfully" });
       }
       setMaterialDialog(false);
-      loadMaterials();
+      await loadMaterials();
     } catch (error: any) {
-      toast({ title: "Error saving material", description: error.message, variant: "destructive" });
+      toast({ title: "Error saving material", description: error.message || "Failed to save", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
