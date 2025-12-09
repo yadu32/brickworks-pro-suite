@@ -134,6 +134,15 @@ const MaterialsModule = () => {
     try {
       const data = await materialApi.getByFactory(factoryId);
       setMaterials(data || []);
+      // Auto-select first material if none selected
+      if (data && data.length > 0) {
+        if (!purchaseForm.material_id) {
+          setPurchaseForm(prev => ({ ...prev, material_id: data[0].id }));
+        }
+        if (!usageForm.material_id) {
+          setUsageForm(prev => ({ ...prev, material_id: data[0].id }));
+        }
+      }
     } catch (error: any) {
       toast({ title: 'Error loading materials', description: error.message, variant: 'destructive' });
     }
