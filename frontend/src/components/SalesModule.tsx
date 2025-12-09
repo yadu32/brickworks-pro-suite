@@ -81,6 +81,10 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   }, [hookFactoryId]);
 
   const handleAddClick = () => {
+    // Auto-select first product when opening dialog
+    if (productTypes.length > 0 && !saleForm.product_id) {
+      setSaleForm(prev => ({ ...prev, product_id: productTypes[0].id }));
+    }
     setIsDialogOpen(true);
   };
 
