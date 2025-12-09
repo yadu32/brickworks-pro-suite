@@ -36,6 +36,10 @@ const ProductionModule = () => {
   const isReadOnly = false; // Subscription logic
 
   const handleAddClick = () => {
+    // Auto-select first product when opening dialog
+    if (productTypes.length > 0 && !formData.product_id) {
+      setFormData(prev => ({ ...prev, product_id: productTypes[0].id }));
+    }
     setIsDialogOpen(true);
   };
 
