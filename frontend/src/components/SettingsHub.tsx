@@ -309,12 +309,12 @@ export const SettingsHub = () => {
 
   const deleteMaterial = async (id: string) => {
     try {
-      const { error } = await supabase.from("materials").delete().eq("id", id);
-      if (error) throw error;
+      const { materialApi } = await import('@/api/material');
+      await materialApi.delete(id);
       toast({ title: "Material deleted" });
-      loadMaterials();
+      await loadMaterials();
     } catch (error: any) {
-      toast({ title: "Error deleting material", description: error.message, variant: "destructive" });
+      toast({ title: "Error deleting material", description: error.message || "Failed to delete", variant: "destructive" });
     }
     setDeleteConfirm(null);
   };
