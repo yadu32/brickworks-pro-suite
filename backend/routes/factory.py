@@ -31,7 +31,7 @@ async def create_factory(
     await db.factories.insert_one(factory.dict())
     return factory
 
-@router.get("/", response_model=List[Factory])
+@router.get("", response_model=List[Factory])
 async def get_user_factories(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database)
