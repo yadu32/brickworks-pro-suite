@@ -56,7 +56,7 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
                 <Menu className="h-6 w-6" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-72 bg-card border-border z-50">
+            <DropdownMenuContent align="start" className="w-80 bg-card border-border z-50">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
