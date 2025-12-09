@@ -5,6 +5,8 @@ from datetime import datetime
 class FactoryBase(BaseModel):
     name: str
     location: Optional[str] = None
+    owner_name: Optional[str] = None
+    contact_number: Optional[str] = None
 
 class FactoryCreate(FactoryBase):
     pass
@@ -12,6 +14,8 @@ class FactoryCreate(FactoryBase):
 class FactoryUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
+    owner_name: Optional[str] = None
+    contact_number: Optional[str] = None
     subscription_status: Optional[str] = None
     plan_type: Optional[str] = None
     plan_expiry_date: Optional[datetime] = None
