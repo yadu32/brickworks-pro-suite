@@ -59,9 +59,6 @@ const ProductionModule = () => {
     try {
       const data = await productApi.getByFactory(factoryId);
       setProductTypes(data || []);
-      if (data && data.length > 0 && !formData.product_id) {
-        setFormData(prev => ({ ...prev, product_id: data[0].id }));
-      }
     } catch (error) {
       console.error('Error loading product types:', error);
       toast({ title: "Error", description: "Failed to load product types", variant: "destructive" });
