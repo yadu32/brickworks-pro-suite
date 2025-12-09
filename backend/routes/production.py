@@ -8,7 +8,7 @@ from datetime import date
 
 router = APIRouter(prefix="/production", tags=["production"])
 
-@router.post("/", response_model=ProductionLog, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ProductionLog, status_code=status.HTTP_201_CREATED)
 async def create_production_log(
     production_data: ProductionLogCreate,
     current_user: dict = Depends(get_current_user),

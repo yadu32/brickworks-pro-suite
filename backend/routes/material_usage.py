@@ -8,7 +8,7 @@ from datetime import datetime
 
 router = APIRouter(prefix="/material-usage", tags=["material-usage"])
 
-@router.post("/", response_model=MaterialUsage, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=MaterialUsage, status_code=status.HTTP_201_CREATED)
 async def create_material_usage(
     usage_data: MaterialUsageCreate,
     current_user: dict = Depends(get_current_user),

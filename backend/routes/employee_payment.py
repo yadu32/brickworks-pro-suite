@@ -7,7 +7,7 @@ from middleware.auth import get_current_user
 
 router = APIRouter(prefix="/employee-payments", tags=["employee-payments"])
 
-@router.post("/", response_model=EmployeePayment, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=EmployeePayment, status_code=status.HTTP_201_CREATED)
 async def create_employee_payment(
     payment_data: EmployeePaymentCreate,
     current_user: dict = Depends(get_current_user),

@@ -7,7 +7,7 @@ from middleware.auth import get_current_user
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
 
-@router.post("/", response_model=Supplier, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Supplier, status_code=status.HTTP_201_CREATED)
 async def create_supplier(
     supplier_data: SupplierCreate,
     current_user: dict = Depends(get_current_user),
