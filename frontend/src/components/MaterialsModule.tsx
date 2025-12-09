@@ -430,6 +430,19 @@ const MaterialsModule = () => {
     }
   }, [factoryId]);
 
+  // ROBUST FIX: Auto-select first material when data loads
+  useEffect(() => {
+    if (materials.length > 0 && !purchaseForm.material_id && !editingPurchase) {
+      setPurchaseForm(prev => ({ ...prev, material_id: materials[0].id }));
+    }
+  }, [materials, editingPurchase]);
+
+  useEffect(() => {
+    if (materials.length > 0 && !usageForm.material_id && !editingUsage) {
+      setUsageForm(prev => ({ ...prev, material_id: materials[0].id }));
+    }
+  }, [materials, editingUsage]);
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
