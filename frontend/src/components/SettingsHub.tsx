@@ -218,34 +218,29 @@ export const SettingsHub = () => {
 
     setIsLoading(true);
     try {
+      const { productApi } = await import('@/api/product');
+      
       if (editingProduct) {
-        const { error } = await supabase
-          .from("product_definitions")
-          .update({
-            name: productName,
-            size_description: productSize || null,
-            items_per_punch: productPerPunch,
-          })
-          .eq("id", editingProduct.id);
-
-        if (error) throw error;
+        await productApi.update(editingProduct.id, {
+          name: productName,
+          size_description: productSize || undefined,
+          items_per_punch: productPerPunch,
+        });
         toast({ title: "Product updated successfully" });
       } else {
-        const { error } = await supabase.from("product_definitions").insert({
+        await productApi.create({
           factory_id: factory.id,
           name: productName,
-          size_description: productSize || null,
+          size_description: productSize || undefined,
           items_per_punch: productPerPunch,
           unit: 'Pieces',
         });
-
-        if (error) throw error;
         toast({ title: "Product added successfully" });
       }
       setProductDialog(false);
-      loadProducts();
+      await loadProducts();
     } catch (error: any) {
-      toast({ title: "Error saving product", description: error.message, variant: "destructive" });
+      toast({ title: "Error saving product", description: error.message || "Failed to save", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
