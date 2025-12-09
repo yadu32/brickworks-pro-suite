@@ -133,17 +133,13 @@ export const SettingsHub = () => {
   const loadProducts = async () => {
     if (!factory) return;
     
-    const { data, error } = await supabase
-      .from("product_definitions")
-      .select("*")
-      .eq("factory_id", factory.id)
-      .order("name");
-
-    if (error) {
-      toast({ title: "Error loading products", description: error.message, variant: "destructive" });
-      return;
+    try {
+      const { productApi } = await import('@/api/product');
+      const data = await productApi.getByFactory(factory.id);
+      setProducts(data || []);
+    } catch (error: any) {
+      toast({ title: "Error loading products", description: error.message || "Failed to load", variant: "destructive" });
     }
-    setProducts(data || []);
   };
 
   const loadMaterials = async () => {
