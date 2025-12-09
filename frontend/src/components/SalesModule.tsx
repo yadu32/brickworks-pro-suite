@@ -304,6 +304,17 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
       return;
     }
     
+    // CRITICAL VALIDATION: Ensure product_id is not empty
+    if (!saleForm.product_id || saleForm.product_id.trim() === '') {
+      toast({ title: 'Error', description: 'Please select a product type', variant: 'destructive' });
+      return;
+    }
+    
+    if (!saleForm.customer_name || saleForm.customer_name.trim() === '') {
+      toast({ title: 'Error', description: 'Please enter customer name', variant: 'destructive' });
+      return;
+    }
+    
     const totalAmount = Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick);
     const amountReceived = Number(saleForm.amount_received) || 0;
     const balanceDue = totalAmount - amountReceived;
@@ -311,7 +322,7 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     const saleData = {
       date: saleForm.date,
       customer_name: saleForm.customer_name,
-      customer_phone: saleForm.customer_phone,
+      customer_phone: saleForm.customer_phone || undefined,
       product_id: saleForm.product_id,
       quantity_sold: Number(saleForm.quantity_sold),
       rate_per_brick: Number(saleForm.rate_per_brick),
