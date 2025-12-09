@@ -19,7 +19,11 @@ async def create_material_purchase(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     purchase = MaterialPurchase(**purchase_data.dict())
-    await db.material_purchases.insert_one(purchase.dict())
+    purchase_dict = purchase.dict()
+    # Convert date to string for MongoDB
+    if 'date' in purchase_dict and purchase_dict['date']:
+        purchase_dict['date'] = str(purchase_dict['date'])
+    await db.material_purchases.insert_one(purchase_dict)
     
     # Update material stock
     material = await db.materials.find_one({"id": purchase_data.material_id})
