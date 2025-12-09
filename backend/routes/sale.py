@@ -18,7 +18,11 @@ async def create_sale(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     sale = Sale(**sale_data.dict())
-    await db.sales.insert_one(sale.dict())
+    sale_dict = sale.dict()
+    # Convert date to string for MongoDB
+    if 'date' in sale_dict and sale_dict['date']:
+        sale_dict['date'] = str(sale_dict['date'])
+    await db.sales.insert_one(sale_dict)
     return sale
 
 @router.get("/factory/{factory_id}", response_model=List[Sale])

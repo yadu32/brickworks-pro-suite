@@ -18,7 +18,11 @@ async def create_customer(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     customer = Customer(**customer_data.dict())
-    await db.customers.insert_one(customer.dict())
+    customer_dict = customer.dict()
+    # Convert date to string for MongoDB
+    if 'date' in customer_dict and customer_dict['date']:
+        customer_dict['date'] = str(customer_dict['date'])
+    await db.customers.insert_one(customer_dict)
     return customer
 
 @router.get("/factory/{factory_id}", response_model=List[Customer])

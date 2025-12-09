@@ -19,7 +19,11 @@ async def create_product(
         raise HTTPException(status_code=403, detail="Not authorized to access this factory")
     
     product = ProductDefinition(**product_data.dict())
-    await db.product_definitions.insert_one(product.dict())
+    product_dict = product.dict()
+    # Convert date to string for MongoDB
+    if 'date' in product_dict and product_dict['date']:
+        product_dict['date'] = str(product_dict['date'])
+    await db.product_definitions.insert_one(product_dict)
     return product
 
 @router.get("/factory/{factory_id}", response_model=List[ProductDefinition])

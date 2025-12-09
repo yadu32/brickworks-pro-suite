@@ -18,7 +18,11 @@ async def create_other_expense(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     expense = OtherExpense(**expense_data.dict())
-    await db.other_expenses.insert_one(expense.dict())
+    expense_dict = expense.dict()
+    # Convert date to string for MongoDB
+    if 'date' in expense_dict and expense_dict['date']:
+        expense_dict['date'] = str(expense_dict['date'])
+    await db.other_expenses.insert_one(expense_dict)
     return expense
 
 @router.get("/factory/{factory_id}", response_model=List[OtherExpense])

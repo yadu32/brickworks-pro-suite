@@ -18,7 +18,11 @@ async def create_employee_payment(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     payment = EmployeePayment(**payment_data.dict())
-    await db.employee_payments.insert_one(payment.dict())
+    payment_dict = payment.dict()
+    # Convert date to string for MongoDB
+    if 'date' in payment_dict and payment_dict['date']:
+        payment_dict['date'] = str(payment_dict['date'])
+    await db.employee_payments.insert_one(payment_dict)
     return payment
 
 @router.get("/factory/{factory_id}", response_model=List[EmployeePayment])

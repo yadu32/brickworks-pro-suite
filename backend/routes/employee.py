@@ -18,7 +18,11 @@ async def create_employee(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     employee = Employee(**employee_data.dict())
-    await db.employees.insert_one(employee.dict())
+    employee_dict = employee.dict()
+    # Convert date to string for MongoDB
+    if 'date' in employee_dict and employee_dict['date']:
+        employee_dict['date'] = str(employee_dict['date'])
+    await db.employees.insert_one(employee_dict)
     return employee
 
 @router.get("/factory/{factory_id}", response_model=List[Employee])

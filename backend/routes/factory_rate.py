@@ -18,7 +18,11 @@ async def create_factory_rate(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     rate = FactoryRate(**rate_data.dict())
-    await db.factory_rates.insert_one(rate.dict())
+    rate_dict = rate.dict()
+    # Convert date to string for MongoDB
+    if 'date' in rate_dict and rate_dict['date']:
+        rate_dict['date'] = str(rate_dict['date'])
+    await db.factory_rates.insert_one(rate_dict)
     return rate
 
 @router.get("/factory/{factory_id}", response_model=List[FactoryRate])

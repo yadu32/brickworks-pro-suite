@@ -19,7 +19,11 @@ async def create_material_usage(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     usage = MaterialUsage(**usage_data.dict())
-    await db.material_usage.insert_one(usage.dict())
+    usage_dict = usage.dict()
+    # Convert date to string for MongoDB
+    if 'date' in usage_dict and usage_dict['date']:
+        usage_dict['date'] = str(usage_dict['date'])
+    await db.material_usage.insert_one(usage_dict)
     
     # Update material stock
     material = await db.materials.find_one({"id": usage_data.material_id})

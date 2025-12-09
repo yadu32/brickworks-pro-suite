@@ -18,7 +18,11 @@ async def create_supplier(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     supplier = Supplier(**supplier_data.dict())
-    await db.suppliers.insert_one(supplier.dict())
+    supplier_dict = supplier.dict()
+    # Convert date to string for MongoDB
+    if 'date' in supplier_dict and supplier_dict['date']:
+        supplier_dict['date'] = str(supplier_dict['date'])
+    await db.suppliers.insert_one(supplier_dict)
     return supplier
 
 @router.get("/factory/{factory_id}", response_model=List[Supplier])

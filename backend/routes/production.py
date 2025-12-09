@@ -20,7 +20,11 @@ async def create_production_log(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     production = ProductionLog(**production_data.dict())
-    await db.production_logs.insert_one(production.dict())
+    production_dict = production.dict()
+    # Convert date to string for MongoDB
+    if 'date' in production_dict and production_dict['date']:
+        production_dict['date'] = str(production_dict['date'])
+    await db.production_logs.insert_one(production_dict)
     return production
 
 @router.get("/factory/{factory_id}", response_model=List[ProductionLog])

@@ -18,7 +18,11 @@ async def create_material(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     material = Material(**material_data.dict())
-    await db.materials.insert_one(material.dict())
+    material_dict = material.dict()
+    # Convert date to string for MongoDB
+    if 'date' in material_dict and material_dict['date']:
+        material_dict['date'] = str(material_dict['date'])
+    await db.materials.insert_one(material_dict)
     return material
 
 @router.get("/factory/{factory_id}", response_model=List[Material])
