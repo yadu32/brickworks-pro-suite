@@ -105,64 +105,128 @@ const Onboarding = ({ userId, onComplete }: OnboardingProps) => {
     }
 
     setLoading(true);
+    
     try {
+      console.log('Starting onboarding process...');
+      
       // Import APIs
       const { factoryApi } = await import('@/api/factory');
       const { productApi } = await import('@/api/product');
       const { materialApi } = await import('@/api/material');
       const { expenseApi } = await import('@/api/expense');
 
-      // 1. Create factory
-      const factory = await factoryApi.create({
-        name: factoryName,
-        location: location || undefined,
-      });
+      // STEP 1: Create factory FIRST (CRITICAL - must complete before anything else)
+      console.log('Step 1: Creating factory...', { name: factoryName, location });
+      let factory;
+      try {
+        factory = await factoryApi.create({
+          name: factoryName,
+          location: location || undefined,
+        });
+        console.log('Factory created successfully:', factory);
+      } catch (error: any) {
+        console.error('Factory creation failed:', error);
+        throw new Error(`Failed to create factory: ${error.response?.data?.detail || error.message}`);
+      }
+
+      if (!factory || !factory.id) {
+        throw new Error('Factory was created but no ID was returned');
+      }
 
       const factoryId = factory.id;
+      console.log('Factory ID:', factoryId);
 
-      // 2. Create product definitions (brick types)
-      for (const bt of brickTypes.filter(bt => bt.name.trim())) {
-        await productApi.create({
+      // STEP 2: Create product definitions (brick types) - SEQUENTIAL
+      console.log('Step 2: Creating product definitions...');
+      const validBrickTypes = brickTypes.filter(bt => bt.name.trim());
+      for (let i = 0; i < validBrickTypes.length; i++) {
+        const bt = validBrickTypes[i];
+        try {
+          console.log(`Creating product ${i + 1}/${validBrickTypes.length}:`, bt.name);
+          await productApi.create({
+            factory_id: factoryId,
+            name: bt.name,
+            size_description: bt.size || undefined,
+            items_per_punch: bt.bricksPerPunch,
+            unit: 'Pieces',
+          });
+        } catch (error: any) {
+          console.error(`Failed to create product "${bt.name}":`, error);
+          throw new Error(`Failed to create brick type "${bt.name}": ${error.response?.data?.detail || error.message}`);
+        }
+      }
+      console.log('Products created successfully');
+
+      // STEP 3: Create materials inventory - SEQUENTIAL
+      console.log('Step 3: Creating materials...');
+      for (let i = 0; i < validMaterials.length; i++) {
+        const m = validMaterials[i];
+        try {
+          console.log(`Creating material ${i + 1}/${validMaterials.length}:`, m.name);
+          await materialApi.create({
+            factory_id: factoryId,
+            material_name: m.name,
+            unit: m.unit,
+            current_stock_qty: 0,
+            average_cost_per_unit: 0,
+          });
+        } catch (error: any) {
+          console.error(`Failed to create material "${m.name}":`, error);
+          throw new Error(`Failed to create material "${m.name}": ${error.response?.data?.detail || error.message}`);
+        }
+      }
+      console.log('Materials created successfully');
+
+      // STEP 4: Create default factory rates
+      console.log('Step 4: Creating factory rates...');
+      try {
+        await expenseApi.createRate({
           factory_id: factoryId,
-          name: bt.name,
-          size_description: bt.size || undefined,
-          items_per_punch: bt.bricksPerPunch,
-          unit: 'Pieces',
+          rate_type: 'production_per_punch',
+          rate_amount: 15,
+          is_active: true,
         });
+
+        await expenseApi.createRate({
+          factory_id: factoryId,
+          rate_type: 'loading_per_brick',
+          rate_amount: 2,
+          is_active: true,
+        });
+        console.log('Factory rates created successfully');
+      } catch (error: any) {
+        console.error('Failed to create factory rates:', error);
+        // Don't fail the entire onboarding for rates - they can be set later
+        console.warn('Rates creation failed but continuing...');
       }
 
-      // 3. Create materials inventory (with 0 stock)
-      for (const m of validMaterials) {
-        await materialApi.create({
-          factory_id: factoryId,
-          material_name: m.name,
-          unit: m.unit,
-          current_stock_qty: 0,
-          average_cost_per_unit: 0,
-        });
-      }
-
-      // 4. Create default factory rates
-      await expenseApi.createRate({
-        factory_id: factoryId,
-        rate_type: 'production_per_punch',
-        rate_amount: 15,
-        is_active: true,
-      });
-
-      await expenseApi.createRate({
-        factory_id: factoryId,
-        rate_type: 'loading_per_brick',
-        rate_amount: 2,
-        is_active: true,
-      });
-
+      console.log('Onboarding completed successfully!');
       toast({ title: "Setup complete!", description: "Your factory is ready to use." });
       onComplete();
     } catch (error: any) {
-      console.error('Onboarding error:', error);
-      const message = error.response?.data?.detail || error.message || 'Setup failed';
-      toast({ title: "Setup failed", description: message, variant: "destructive" });
+      console.error('=== ONBOARDING ERROR ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response detail:', error.response?.data?.detail);
+      console.error('========================');
+      
+      let message = 'Setup failed';
+      
+      if (error.code === 'ERR_NETWORK' || error.message.includes('Network')) {
+        message = 'Network Error: Cannot connect to server. Please check your internet connection and try again.';
+      } else if (error.response?.data?.detail) {
+        message = error.response.data.detail;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      toast({ 
+        title: "Setup failed", 
+        description: message, 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
