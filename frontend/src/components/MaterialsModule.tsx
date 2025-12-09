@@ -225,9 +225,15 @@ const MaterialsModule = () => {
     e.preventDefault();
     if (!factoryId) return;
     
+    console.log('=== PURCHASE FORM SUBMIT ===');
+    console.log('purchaseForm:', purchaseForm);
+    console.log('material_id:', purchaseForm.material_id);
+    console.log('materials list:', materials);
+    
     // CRITICAL VALIDATION: Ensure material_id is not empty
     if (!purchaseForm.material_id || purchaseForm.material_id.trim() === '') {
-      toast({ title: 'Error', description: 'Please select a material', variant: 'destructive' });
+      console.error('VALIDATION FAILED: No material selected');
+      toast({ title: 'Error', description: 'Please select a material from the dropdown', variant: 'destructive' });
       return;
     }
     
@@ -242,6 +248,8 @@ const MaterialsModule = () => {
       notes: purchaseForm.notes,
       factory_id: factoryId
     };
+    
+    console.log('Sending purchase data:', purchaseData);
 
     try {
       if (editingPurchase) {
