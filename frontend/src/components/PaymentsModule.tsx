@@ -54,6 +54,10 @@ const PaymentsModule = () => {
   }, [hookFactoryId]);
 
   const handleAddClick = () => {
+    // Auto-select first employee when opening dialog if available
+    if (employeeOptions.length > 0 && !paymentForm.employee_name) {
+      setPaymentForm(prev => ({ ...prev, employee_name: employeeOptions[0].value }));
+    }
     setIsDialogOpen(true);
   };
 
