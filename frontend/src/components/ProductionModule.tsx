@@ -90,12 +90,18 @@ const ProductionModule = () => {
     e.preventDefault();
     if (!factoryId) return;
     
+    console.log('=== PRODUCTION FORM SUBMIT ===');
+    console.log('formData:', formData);
+    console.log('product_id:', formData.product_id);
+    console.log('productTypes list:', productTypes);
+    
     const productType = getProductType(formData.product_id);
     
     try {
       // CRITICAL VALIDATION: Ensure product_id is not empty
       if (!formData.product_id || formData.product_id.trim() === '') {
-        toast({ title: "Error", description: "Please select a product type", variant: "destructive" });
+        console.error('VALIDATION FAILED: No product selected');
+        toast({ title: "Error", description: "Please select a product type from the dropdown", variant: "destructive" });
         return;
       }
       
