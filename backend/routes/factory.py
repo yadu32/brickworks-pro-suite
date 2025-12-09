@@ -8,7 +8,7 @@ from middleware.auth import get_current_user
 
 router = APIRouter(prefix="/factories", tags=["factories"])
 
-@router.post("/", response_model=Factory, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Factory, status_code=status.HTTP_201_CREATED)
 async def create_factory(
     factory_data: FactoryCreate,
     current_user: dict = Depends(get_current_user),
