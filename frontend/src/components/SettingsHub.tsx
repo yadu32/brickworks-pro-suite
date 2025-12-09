@@ -248,12 +248,12 @@ export const SettingsHub = () => {
 
   const deleteProduct = async (id: string) => {
     try {
-      const { error } = await supabase.from("product_definitions").delete().eq("id", id);
-      if (error) throw error;
+      const { productApi } = await import('@/api/product');
+      await productApi.delete(id);
       toast({ title: "Product deleted" });
-      loadProducts();
+      await loadProducts();
     } catch (error: any) {
-      toast({ title: "Error deleting product", description: error.message, variant: "destructive" });
+      toast({ title: "Error deleting product", description: error.message || "Failed to delete", variant: "destructive" });
     }
     setDeleteConfirm(null);
   };
