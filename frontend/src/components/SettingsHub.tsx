@@ -186,7 +186,9 @@ export const SettingsHub = () => {
       const { factoryApi } = await import('@/api/factory');
       await factoryApi.update(factory.id, { 
         name: factoryName, 
-        location: factoryLocation || undefined 
+        location: factoryLocation || undefined,
+        owner_name: ownerName || undefined,
+        contact_number: contactNumber || undefined
       });
       
       toast({ title: "Factory info saved" });
