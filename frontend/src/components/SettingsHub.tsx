@@ -73,6 +73,8 @@ export const SettingsHub = () => {
   const [factory, setFactory] = useState<FactoryInfo | null>(null);
   const [factoryName, setFactoryName] = useState('');
   const [factoryLocation, setFactoryLocation] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
 
   // Product Definitions State (instead of brick_types)
   const [products, setProducts] = useState<ProductDefinition[]>([]);
