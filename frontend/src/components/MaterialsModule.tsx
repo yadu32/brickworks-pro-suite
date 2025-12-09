@@ -225,6 +225,12 @@ const MaterialsModule = () => {
     e.preventDefault();
     if (!factoryId) return;
     
+    // CRITICAL VALIDATION: Ensure material_id is not empty
+    if (!purchaseForm.material_id || purchaseForm.material_id.trim() === '') {
+      toast({ title: 'Error', description: 'Please select a material', variant: 'destructive' });
+      return;
+    }
+    
     const purchaseData = {
       date: purchaseForm.date,
       material_id: purchaseForm.material_id,
