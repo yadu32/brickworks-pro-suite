@@ -118,10 +118,6 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     try {
       const data = await productApi.getByFactory(factoryId);
       setProductTypes(data || []);
-      // Auto-select first product if none selected
-      if (data && data.length > 0 && !saleForm.product_id) {
-        setSaleForm(prev => ({ ...prev, product_id: data[0].id }));
-      }
     } catch (error: any) {
       toast({ title: 'Error loading product types', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
