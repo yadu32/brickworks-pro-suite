@@ -107,23 +107,22 @@ export const SettingsHub = () => {
   }, [factory]);
 
   const loadFactory = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { factoryApi } = await import('@/api/factory');
+      const factories = await factoryApi.getAll();
+      
+      if (!factories || factories.length === 0) {
+        toast({ title: "No factory found", description: "Please complete onboarding first", variant: "destructive" });
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from('factories')
-      .select('*')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (error) {
-      toast({ title: "Error loading factory", description: error.message, variant: "destructive" });
-      return;
+      const factoryData = factories[0];
+      setFactory(factoryData);
+      setFactoryName(factoryData.name);
+      setFactoryLocation(factoryData.location || '');
+    } catch (error: any) {
+      toast({ title: "Error loading factory", description: error.message || "Failed to load", variant: "destructive" });
     }
-
-    setFactory(data);
-    setFactoryName(data.name);
-    setFactoryLocation(data.location || '');
   };
 
   const loadAllData = async () => {
