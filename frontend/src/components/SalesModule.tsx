@@ -770,7 +770,7 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
                     <SearchableSelect
                       options={customerOptions}
                       value={saleForm.customer_name}
-                      onChange={(value) => {
+                      onValueChange={(value) => {
                         const selectedCustomer = customerOptions.find(c => c.value === value);
                         setSaleForm({
                           ...saleForm, 
