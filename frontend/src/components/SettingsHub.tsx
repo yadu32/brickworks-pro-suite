@@ -434,6 +434,25 @@ export const SettingsHub = () => {
                 placeholder="Enter location"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="ownerName">Owner Name</Label>
+              <Input
+                id="ownerName"
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                placeholder="Enter owner name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contactNumber">Contact Number</Label>
+              <Input
+                id="contactNumber"
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
+                placeholder="Enter contact number"
+                type="tel"
+              />
+            </div>
             <Button onClick={saveFactory} disabled={isLoading}>
               {isLoading ? "Saving..." : "Save Factory Info"}
             </Button>
