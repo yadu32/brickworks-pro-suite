@@ -62,7 +62,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(response.user));
       setUser(response.user);
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Login failed');
+      console.error('Login error:', error);
+      const message = error.response?.data?.detail || error.message || 'Login failed';
+      throw new Error(message);
     }
   };
 
@@ -73,7 +75,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(response.user));
       setUser(response.user);
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Registration failed');
+      console.error('Registration error:', error);
+      const message = error.response?.data?.detail || error.message || 'Registration failed';
+      throw new Error(message);
     }
   };
 
