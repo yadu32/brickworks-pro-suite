@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true
     },
     define: {
-      'process.env.REACT_APP_BACKEND_URL': JSON.stringify(env.REACT_APP_BACKEND_URL || 'https://app-importer-3.preview.emergentagent.com'),
+      'process.env.REACT_APP_BACKEND_URL': JSON.stringify(env.REACT_APP_BACKEND_URL || 'https://brick-factory-app-1.preview.emergentagent.com'),
     },
     plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
     resolve: {
