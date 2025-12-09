@@ -521,6 +521,13 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     loadCustomers();
   }, [sales]);
 
+  // ROBUST FIX: Auto-select first product when data loads
+  useEffect(() => {
+    if (productTypes.length > 0 && !saleForm.product_id && !editingSale) {
+      setSaleForm(prev => ({ ...prev, product_id: productTypes[0].id }));
+    }
+  }, [productTypes, editingSale]);
+
   if (selectedCustomer) {
     const customer = customers.find(c => c.customer_name === selectedCustomer);
     
