@@ -303,6 +303,11 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('=== SALE FORM SUBMIT ===');
+    console.log('saleForm:', saleForm);
+    console.log('product_id:', saleForm.product_id);
+    console.log('productTypes list:', productTypes);
+    
     if (!factoryId) {
       toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
       return;
@@ -310,11 +315,13 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     
     // CRITICAL VALIDATION: Ensure product_id is not empty
     if (!saleForm.product_id || saleForm.product_id.trim() === '') {
-      toast({ title: 'Error', description: 'Please select a product type', variant: 'destructive' });
+      console.error('VALIDATION FAILED: No product selected');
+      toast({ title: 'Error', description: 'Please select a product type from the dropdown', variant: 'destructive' });
       return;
     }
     
     if (!saleForm.customer_name || saleForm.customer_name.trim() === '') {
+      console.error('VALIDATION FAILED: No customer name');
       toast({ title: 'Error', description: 'Please enter customer name', variant: 'destructive' });
       return;
     }
