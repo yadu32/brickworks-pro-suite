@@ -38,12 +38,19 @@ const Auth = () => {
         });
       }
     } catch (error: any) {
+      console.error('Auth error:', error);
       let message = error.message || 'An error occurred';
-      if (message.includes('Invalid') || message.includes('Incorrect')) {
+      
+      if (error.code === 'ERR_NETWORK' || message.includes('Network')) {
+        message = 'Cannot connect to server. Please check your internet connection.';
+      } else if (message.includes('Invalid') || message.includes('Incorrect')) {
         message = 'Invalid email or password';
       } else if (message.includes('already')) {
         message = 'This email is already registered. Please login instead.';
+      } else if (error.response) {
+        message = error.response.data?.detail || error.response.statusText || message;
       }
+      
       toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
