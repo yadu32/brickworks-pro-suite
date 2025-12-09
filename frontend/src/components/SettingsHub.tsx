@@ -179,16 +179,16 @@ export const SettingsHub = () => {
     
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('factories')
-        .update({ name: factoryName, location: factoryLocation || null })
-        .eq('id', factory.id);
-
-      if (error) throw error;
+      const { factoryApi } = await import('@/api/factory');
+      await factoryApi.update(factory.id, { 
+        name: factoryName, 
+        location: factoryLocation || undefined 
+      });
+      
       toast({ title: "Factory info saved" });
-      loadFactory();
+      await loadFactory();
     } catch (error: any) {
-      toast({ title: "Error saving factory", description: error.message, variant: "destructive" });
+      toast({ title: "Error saving factory", description: error.message || "Failed to save", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
