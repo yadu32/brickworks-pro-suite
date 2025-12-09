@@ -265,6 +265,29 @@ const Onboarding = ({ userId, onComplete }: OnboardingProps) => {
                     className="bg-muted"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ownerName">Owner Name</Label>
+                  <Input
+                    id="ownerName"
+                    placeholder="Owner's full name"
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    className="bg-muted"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contactNumber">Contact Number</Label>
+                  <Input
+                    id="contactNumber"
+                    placeholder="Phone number"
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    className="bg-muted"
+                    type="tel"
+                  />
+                </div>
               </div>
               
               <div className="flex justify-end">
