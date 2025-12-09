@@ -237,7 +237,6 @@ class BrickworksAPITester:
             "factory_id": self.factory_data['id'],
             "product_id": self.product_data['id'],  # This should be a valid UUID now
             "product_name": self.product_data['name'],
-            "date": str(date.today()),
             "quantity": 1000,
             "punches": 100,
             "remarks": "Test production entry"
