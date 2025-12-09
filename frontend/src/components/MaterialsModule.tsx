@@ -83,19 +83,19 @@ const MaterialsModule = () => {
   }, [hookFactoryId]);
 
   const handleAddPurchaseClick = () => {
-    if (true) {
-      setIsPurchaseDialogOpen(true);
-    } else {
-      setShowUpgradeModal(true);
+    // Auto-select first material when opening dialog
+    if (materials.length > 0 && !purchaseForm.material_id) {
+      setPurchaseForm(prev => ({ ...prev, material_id: materials[0].id }));
     }
+    setIsPurchaseDialogOpen(true);
   };
 
   const handleAddUsageClick = () => {
-    if (canPerformAction()) {
-      setIsUsageDialogOpen(true);
-    } else {
-      setShowUpgradeModal(true);
+    // Auto-select first material when opening dialog
+    if (materials.length > 0 && !usageForm.material_id) {
+      setUsageForm(prev => ({ ...prev, material_id: materials[0].id }));
     }
+    setIsUsageDialogOpen(true);
   };
 
   const [purchaseForm, setPurchaseForm] = useState({
