@@ -122,6 +122,8 @@ export const SettingsHub = () => {
       setFactory(factoryData);
       setFactoryName(factoryData.name);
       setFactoryLocation(factoryData.location || '');
+      setOwnerName(factoryData.owner_name || '');
+      setContactNumber(factoryData.contact_number || '');
     } catch (error: any) {
       toast({ title: "Error loading factory", description: error.message || "Failed to load", variant: "destructive" });
     }
