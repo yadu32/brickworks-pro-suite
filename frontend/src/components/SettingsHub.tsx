@@ -325,36 +325,27 @@ export const SettingsHub = () => {
     
     setIsLoading(true);
     try {
-      await supabase
-        .from("factory_rates")
-        .update({ is_active: false })
-        .eq("factory_id", factory.id)
-        .eq("is_active", true);
+      const { expenseApi } = await import('@/api/expense');
+      
+      // Create new rates (backend will handle deactivating old ones if needed)
+      await expenseApi.createRate({
+        factory_id: factory.id,
+        rate_type: "production_per_punch",
+        rate_amount: productionRate,
+        is_active: true,
+      });
 
-      const { error } = await supabase.from("factory_rates").insert([
-        {
-          factory_id: factory.id,
-          rate_type: "production_per_punch",
-          rate_amount: productionRate,
-          brick_type_id: null,
-          effective_date: new Date().toISOString().split("T")[0],
-          is_active: true,
-        },
-        {
-          factory_id: factory.id,
-          rate_type: "loading_per_brick",
-          rate_amount: loadingRate,
-          brick_type_id: null,
-          effective_date: new Date().toISOString().split("T")[0],
-          is_active: true,
-        },
-      ]);
+      await expenseApi.createRate({
+        factory_id: factory.id,
+        rate_type: "loading_per_brick",
+        rate_amount: loadingRate,
+        is_active: true,
+      });
 
-      if (error) throw error;
       toast({ title: "Rates updated successfully" });
-      loadRates();
+      await loadRates();
     } catch (error: any) {
-      toast({ title: "Error saving rates", description: error.message, variant: "destructive" });
+      toast({ title: "Error saving rates", description: error.message || "Failed to save", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
