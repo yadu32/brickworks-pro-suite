@@ -287,7 +287,6 @@ class BrickworksAPITester:
             "factory_id": self.factory_data['id'],
             "product_id": "",  # Empty product_id should be rejected
             "product_name": "Test Product",
-            "date": str(date.today()),
             "quantity": 1000,
             "punches": 100,
             "remarks": "Test with empty product ID"
