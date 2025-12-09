@@ -93,6 +93,12 @@ const ProductionModule = () => {
     const productType = getProductType(formData.product_id);
     
     try {
+      // CRITICAL VALIDATION: Ensure product_id is not empty
+      if (!formData.product_id || formData.product_id.trim() === '') {
+        toast({ title: "Error", description: "Please select a product type", variant: "destructive" });
+        return;
+      }
+      
       const productionData = {
         date: formData.date,
         product_id: formData.product_id,
