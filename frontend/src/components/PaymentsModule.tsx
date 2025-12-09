@@ -461,15 +461,25 @@ const PaymentsModule = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="employeeName">Employee Name</Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="employeeName">Employee Name</Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsAddEmployeeOpen(true)}
+                        className="h-7 text-xs"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add New
+                      </Button>
+                    </div>
                     <SearchableSelect
                       value={paymentForm.employee_name}
                       onValueChange={(value) => setPaymentForm({ ...paymentForm, employee_name: value })}
                       options={employeeOptions}
                       placeholder="Select employee..."
                       searchPlaceholder="Search employees..."
-                      onAddNew={() => setIsAddEmployeeOpen(true)}
-                      addNewLabel="Add New Employee"
                     />
                   </div>
                   <div>
