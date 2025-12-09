@@ -352,7 +352,8 @@ export const SettingsHub = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('token');
+    window.location.href = '/';
   };
 
   const menuItems = [
