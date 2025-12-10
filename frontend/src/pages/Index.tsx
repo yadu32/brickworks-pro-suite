@@ -39,6 +39,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <TrialExpiredBanner />
       <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       <div className="transition-all duration-300 ease-in-out">
         {activeTab === 'dashboard' && <Dashboard />}
@@ -50,6 +51,7 @@ const Index = () => {
         {activeTab === 'weekly' && <ReportsModule />}
         {activeTab === 'settings' && <SettingsHub />}
       </div>
+      <UpgradePlanModal />
     </div>
   );
 };
