@@ -58,4 +58,9 @@ export const saleApi = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/sales/${id}`);
   },
+
+  receivePayment: async (id: string, amount: number): Promise<Sale> => {
+    const response = await apiClient.post(`/sales/${id}/receive-payment`, { amount });
+    return response.data;
+  },
 };
