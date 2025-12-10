@@ -10,6 +10,8 @@ import OtherExpensesModule from '@/components/OtherExpensesModule';
 import { SettingsHub } from '@/components/SettingsHub';
 import TrialExpiredBanner from '@/components/TrialExpiredBanner';
 import UpgradePlanModal from '@/components/UpgradePlanModal';
+import SubscriptionPage from '@/pages/SubscriptionPage';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
