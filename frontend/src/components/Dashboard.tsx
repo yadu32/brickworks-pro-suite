@@ -159,6 +159,23 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6 space-y-8">
+        {/* Trial Expired Banner */}
+        {isReadOnly && (
+          <div className="bg-destructive/20 border border-destructive/30 rounded-lg p-4 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <p className="text-destructive-foreground font-medium">
+                Your free trial has ended — Upgrade to continue adding new entries.
+              </p>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('changeTab', { detail: 'subscription' }))}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 transition-colors"
+              >
+                Upgrade Now
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Sales Summary */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
