@@ -208,7 +208,8 @@ const MaterialsModule = () => {
         setSupplierOptions(
           data.map(s => ({
             value: s.name,
-            label: s.name
+            label: s.name,
+            phone: s.phone || ''
           }))
         );
       } else {
