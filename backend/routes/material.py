@@ -63,6 +63,39 @@ async def update_material(
     updated_material = await db.materials.find_one({"id": material_id})
     return Material(**updated_material)
 
+@router.get("/{material_id}/stock")
+async def get_material_stock(
+    material_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Get material stock breakdown: purchased, used, and current stock"""
+    material = await db.materials.find_one({"id": material_id})
+    if not material:
+        raise HTTPException(status_code=404, detail="Material not found")
+    
+    factory = await db.factories.find_one({"id": material["factory_id"], "owner_id": current_user["sub"]})
+    if not factory:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Calculate total purchased from material_purchases collection
+    purchases = await db.material_purchases.find({"material_id": material_id}).to_list(1000)
+    total_purchased = sum(p.get("quantity_purchased", 0) for p in purchases)
+    
+    # Calculate total used from material_usage collection
+    usages = await db.material_usage.find({"material_id": material_id}).to_list(1000)
+    total_used = sum(u.get("quantity_used", 0) for u in usages)
+    
+    # Current stock = purchased - used
+    current_stock = total_purchased - total_used
+    
+    return {
+        "currentStock": max(0, current_stock),
+        "totalPurchased": total_purchased,
+        "totalUsed": total_used,
+        "totalOut": 0  # For future use
+    }
+
 @router.delete("/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_material(
     material_id: str,
