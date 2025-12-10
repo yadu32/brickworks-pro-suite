@@ -13,7 +13,7 @@ from database import get_database
 from middleware.auth import get_current_user
 import uuid
 
-router = APIRouter(prefix="/api/subscription", tags=["subscription"])
+router = APIRouter(prefix="/subscription", tags=["subscription"])
 
 def calculate_days_remaining(end_date: datetime) -> int:
     """Calculate days remaining until expiry"""
