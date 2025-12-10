@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { subscriptionApi } from '@/api/subscription';
+import { useAuth } from './AuthContext';
 
 interface SubscriptionState {
   isLoading: boolean;
@@ -35,6 +36,7 @@ interface SubscriptionProviderProps {
 }
 
 export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ children }) => {
+  const { user } = useAuth();
   const [state, setState] = useState<SubscriptionState>({
     isLoading: true,
     isTrialExpired: false,
@@ -48,61 +50,28 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const calculateDaysRemaining = (endDate: Date | null): number => {
-    if (!endDate) return 0;
-    const now = new Date();
-    const diffTime = endDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  };
-
   const refreshSubscription = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setState(prev => ({ ...prev, isLoading: false }));
         return;
       }
 
-      const { data: factory, error } = await supabase
-        .from('factories')
-        .select('id, subscription_status, trial_ends_at, plan_expiry_date, plan_type')
-        .eq('owner_id', user.id)
-        .single();
-
-      if (error || !factory) {
-        setState(prev => ({ ...prev, isLoading: false }));
-        return;
-      }
-
-      const now = new Date();
-      const trialEndsAt = factory.trial_ends_at ? new Date(factory.trial_ends_at) : null;
-      const planExpiryDate = factory.plan_expiry_date ? new Date(factory.plan_expiry_date) : null;
+      const data = await subscriptionApi.getStatus();
       
-      const isActive = factory.subscription_status === 'active' && 
-        planExpiryDate && planExpiryDate > now;
-      
-      const isTrialExpired = factory.subscription_status === 'trial' && 
-        trialEndsAt && trialEndsAt < now;
-
-      // Calculate days remaining based on status
-      let daysRemaining = 0;
-      if (isActive && planExpiryDate) {
-        daysRemaining = calculateDaysRemaining(planExpiryDate);
-      } else if (!isTrialExpired && trialEndsAt) {
-        daysRemaining = calculateDaysRemaining(trialEndsAt);
-      }
+      const trialEndsAt = data.trial_ends_at ? new Date(data.trial_ends_at) : null;
+      const planExpiryDate = data.plan_expiry_date ? new Date(data.plan_expiry_date) : null;
 
       setState({
         isLoading: false,
-        isTrialExpired,
-        isActive,
-        subscriptionStatus: factory.subscription_status,
+        isTrialExpired: data.is_trial_expired,
+        isActive: data.is_active,
+        subscriptionStatus: data.subscription_status,
         trialEndsAt,
         planExpiryDate,
-        planType: factory.plan_type,
-        factoryId: factory.id,
-        daysRemaining,
+        planType: data.plan_type,
+        factoryId: null, // Not needed with FastAPI
+        daysRemaining: data.days_remaining,
       });
     } catch (error) {
       console.error('Error fetching subscription:', error);
@@ -118,8 +87,10 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   };
 
   useEffect(() => {
-    refreshSubscription();
-  }, []);
+    if (user) {
+      refreshSubscription();
+    }
+  }, [user]);
 
   return (
     <SubscriptionContext.Provider 
