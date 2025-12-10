@@ -315,13 +315,13 @@ const MaterialsModule = () => {
       if (editingUsage) {
         toast({ title: 'Update functionality coming soon' });
         return;
-      } else {
-        await materialApi.createUsage(usageData);
       }
-
-      await loadUsage();
-      await loadMaterials();
       
+      // Save usage
+      const result = await materialApi.createUsage(usageData);
+      console.log('Usage saved successfully:', result);
+      
+      // Close dialog and reset form FIRST
       setIsUsageDialogOpen(false);
       setEditingUsage(null);
       setUsageForm({
@@ -331,9 +331,19 @@ const MaterialsModule = () => {
         purpose: ''
       });
       
-      toast({ title: editingUsage ? 'Usage updated successfully' : 'Usage added successfully' });
+      // Show success toast
+      toast({ title: 'Success', description: 'Material usage recorded successfully' });
+      
+      // Refresh data in background
+      await Promise.all([loadUsage(), loadMaterials()]);
+      
     } catch (error: any) {
-      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to save usage', variant: 'destructive' });
+      console.error('Error saving usage:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || error.message || 'Failed to save usage', 
+        variant: 'destructive' 
+      });
     }
   };
 
