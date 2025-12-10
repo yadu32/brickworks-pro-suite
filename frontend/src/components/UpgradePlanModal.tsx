@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, Sparkles, Crown, Zap } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/integrations/supabase/client';
+import { subscriptionApi } from '@/api/subscription';
 import { toast } from 'sonner';
-
-const RAZORPAY_KEY = 'rzp_test_RoZrNxdbES3nQm';
 
 interface PlanDetails {
   type: 'monthly' | 'yearly';
@@ -15,6 +13,7 @@ interface PlanDetails {
   discountedPrice: number;
   label: string;
   badge?: string;
+  buttonText: string;
   duration: number; // in days
 }
 
@@ -23,27 +22,27 @@ const plans: PlanDetails[] = [
     type: 'monthly',
     originalPrice: 599,
     discountedPrice: 299,
-    label: 'Monthly Plan',
+    label: 'Monthly',
+    badge: 'Save 50%',
+    buttonText: 'Pay ₹299 & Activate',
     duration: 30,
   },
   {
     type: 'yearly',
-    originalPrice: 6000,
+    originalPrice: 7188,
     discountedPrice: 2999,
-    label: 'Yearly Plan',
-    badge: 'Best Value',
+    label: 'Yearly Pro',
+    badge: 'Super Saver Deal',
+    buttonText: 'Pay ₹2,999 & Save Big',
     duration: 365,
   },
 ];
 
 const features = [
   'Unlimited Production Entries',
-  'Unlimited Sales & Customers',
-  'Material Tracking & Inventory',
-  'Employee Payments Management',
-  'Detailed Reports & Analytics',
-  'Invoice Generation & Sharing',
-  'AI Assistant Access',
+  'Unlimited Sales & Invoices',
+  'Supplier Ledger & Debt Tracking',
+  'Cloud Backup & Data Security',
   'Priority Support',
 ];
 
