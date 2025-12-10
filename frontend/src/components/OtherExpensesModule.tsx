@@ -85,27 +85,24 @@ const OtherExpensesModule = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!factoryId) {
-      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
-      return;
-    }
-    
+    if (!factoryId) return;
+
     setLoading(true);
 
-    const { error } = await supabase.from('other_expenses').insert([{
-      date: formData.date,
-      expense_type: formData.expense_type,
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      vendor_name: formData.vendor_name || null,
-      receipt_number: formData.receipt_number || null,
-      notes: formData.notes || null,
-      factory_id: factoryId
-    }]);
+    try {
+      const expenseData = {
+        date: formData.date,
+        expense_type: formData.expense_type,
+        description: formData.description,
+        amount: Number(formData.amount),
+        vendor_name: formData.vendor_name || undefined,
+        receipt_number: formData.receipt_number || undefined,
+        notes: formData.notes || undefined,
+        factory_id: factoryId
+      };
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+      await expenseApi.createOtherExpense(expenseData);
+      
       toast({ title: 'Success', description: 'Expense added successfully' });
       setFormData({
         date: new Date().toISOString().split('T')[0],
@@ -117,9 +114,17 @@ const OtherExpensesModule = () => {
         notes: ''
       });
       setIsDialogOpen(false);
-      loadExpenses();
+      await loadExpenses();
+    } catch (error: any) {
+      console.error('Error adding expense:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || 'Failed to add expense. Please try again.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
