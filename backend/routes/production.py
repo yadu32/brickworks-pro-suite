@@ -19,18 +19,8 @@ async def create_production_log(
     if not factory:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Convert production data to dict and handle date conversion
-    production_data_dict = production_data.dict()
-    if 'date' in production_data_dict and production_data_dict['date']:
-        production_data_dict['date'] = str(production_data_dict['date'])
-    
-    production = ProductionLog(**production_data_dict)
+    production = ProductionLog(**production_data.dict())
     production_dict = production.dict()
-    
-    # Ensure date is string for MongoDB
-    if 'date' in production_dict and production_dict['date'] and not isinstance(production_dict['date'], str):
-        production_dict['date'] = str(production_dict['date'])
-    
     await db.production_logs.insert_one(production_dict)
     return production
 
