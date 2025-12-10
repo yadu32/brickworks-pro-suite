@@ -21,6 +21,7 @@ interface FormData {
 const ProductionModule = () => {
   const { toast } = useToast();
   const { factoryId } = useFactory();
+  const { guardAction, isReadOnly } = useSubscriptionGuard();
   const [productionRecords, setProductionRecords] = useState<ProductionLog[]>([]);
   const [productTypes, setProductTypes] = useState<ProductDefinition[]>([]);
 
@@ -34,10 +35,8 @@ const ProductionModule = () => {
     remarks: ''
   });
 
-  const isReadOnly = false; // Subscription logic
-
   const handleAddClick = () => {
-    setIsDialogOpen(true);
+    guardAction(() => setIsDialogOpen(true));
   };
 
   useEffect(() => {
