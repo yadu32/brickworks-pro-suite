@@ -12,6 +12,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddSupplierDialog } from '@/components/AddSupplierDialog';
 import { useFactory } from '@/hooks/useFactory';
 import { materialApi, supplierApi } from '@/api';
+import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface Material {
   id: string;
