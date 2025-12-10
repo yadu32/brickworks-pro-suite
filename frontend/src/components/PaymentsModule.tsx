@@ -12,6 +12,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddEmployeeDialog } from '@/components/AddEmployeeDialog';
 import { useFactory } from '@/hooks/useFactory';
 import { employeeApi } from '@/api';
+import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface EmployeePayment {
   id: string;
