@@ -58,6 +58,7 @@ api_router.include_router(employee_router)
 api_router.include_router(employee_payment_router)
 api_router.include_router(factory_rate_router)
 api_router.include_router(other_expense_router)
+api_router.include_router(subscription_router)
 
 # Include the router in the main app
 app.include_router(api_router)
