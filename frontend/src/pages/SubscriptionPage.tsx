@@ -121,8 +121,8 @@ const SubscriptionPage: React.FC = () => {
         {/* Back Button */}
         <Button
           variant="ghost"
-          onClick={() => navigate('/')}
-          className="mb-6"
+          onClick={handleBackToDashboard}
+          className="mb-6 hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
