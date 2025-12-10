@@ -222,8 +222,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Production Creation API (UUID Bug Fix)"
-    - "Complete Production Entry Flow"
+    - "Subscription API Testing Complete"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
