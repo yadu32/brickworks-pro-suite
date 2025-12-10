@@ -129,15 +129,20 @@ const OtherExpensesModule = () => {
   });
 
   const deleteExpense = async (id: string) => {
-    const { error } = await supabase.from('other_expenses').delete().eq('id', id);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await expenseApi.deleteOtherExpense(id);
       toast({ title: 'Success', description: 'Expense deleted' });
-      loadExpenses();
+      await loadExpenses();
+    } catch (error: any) {
+      console.error('Error deleting expense:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || 'Failed to delete expense. Please try again.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setDeleteDialogState({open: false, id: ''});
     }
-    setDeleteDialogState({open: false, id: ''});
   };
 
   const getTotalByType = () => {
