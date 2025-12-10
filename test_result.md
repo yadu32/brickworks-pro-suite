@@ -228,6 +228,71 @@ test_plan:
   test_all: false
   test_priority: "high_first"
 
+  - task: "Subscription Status API"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/subscription.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Subscription status API working correctly. Returns proper subscription status including trial/active/lifetime states, days remaining, and action permissions. New users get 30-day trial as expected."
+
+  - task: "Create Order API (Mock Razorpay)"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/subscription.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Create order API working correctly. **MOCKED** Razorpay integration returns mock order_id and razorpay_key. Accepts amount_in_paise and plan_id parameters properly."
+
+  - task: "Complete Payment API (Mock Razorpay)"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/subscription.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Complete payment API working correctly. **MOCKED** payment verification successfully activates subscription and updates factory status. Proper validation for invalid plan_id (returns 400 error)."
+
+  - task: "Restore Subscription API"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/subscription.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Restore subscription API working correctly. Refreshes subscription status from database and returns consistent data."
+
+  - task: "Subscription Router Prefix Fix"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/subscription.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "Initial test failed with 404 errors due to incorrect router prefix '/api/subscription' causing double '/api' in URLs."
+      - working: true
+        agent: "testing"
+        comment: "FIXED: Changed router prefix from '/api/subscription' to '/subscription' to work with main server.py '/api' prefix. All subscription endpoints now accessible."
+
 agent_communication:
   - agent: "testing"
     message: "Comprehensive backend testing completed for production entry flow. UUID bug fix confirmed working. All critical backend APIs are functioning correctly. The main issue (Invalid UUID error in production creation) has been resolved. Production records can now be created successfully with valid product_id values."
+  - agent: "testing"
+    message: "SUBSCRIPTION API TESTING COMPLETE: All 4 subscription endpoints tested and working correctly. Fixed router prefix issue that was causing 404 errors. Mock Razorpay integration functional. New users get 30-day trial, payment flow works, subscription activation successful. All validation and error handling working properly. Ready for production use with real Razorpay integration."
