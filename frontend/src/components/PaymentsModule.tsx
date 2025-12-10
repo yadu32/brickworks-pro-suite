@@ -528,36 +528,6 @@ const PaymentsModule = () => {
           />
         </div>
 
-        {/* Date Filter */}
-        <section className="animate-fade-in">
-          <div className="card-dark p-4">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Filter by Date Range</h3>
-            <div className="flex gap-4 items-end">
-              <div>
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={dateFilter.start}
-                  onChange={(e) => setDateFilter({...dateFilter, start: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="endDate">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={dateFilter.end}
-                  onChange={(e) => setDateFilter({...dateFilter, end: e.target.value})}
-                />
-              </div>
-              <Button variant="outline" onClick={clearDateFilter}>
-                Clear Filter
-              </Button>
-            </div>
-          </div>
-        </section>
-
         {/* Payment Summary - Consolidated */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Payment Summary</h2>
