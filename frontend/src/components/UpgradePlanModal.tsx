@@ -223,10 +223,17 @@ const UpgradePlanModal: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-center mt-4">
+        <div className="text-center mt-4 space-y-2">
+          <button 
+            onClick={handleGoToSubscriptionPage}
+            className="text-sm text-primary hover:underline font-medium"
+          >
+            View Full Pricing Page
+          </button>
+          <br />
           <button 
             onClick={handleRestore}
-            className="text-sm text-primary hover:underline"
+            className="text-sm text-muted-foreground hover:underline"
           >
             Restore Purchase
           </button>
