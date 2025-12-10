@@ -3,6 +3,7 @@ import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, Credi
 import { QuickEntryDialogs } from '@/components/QuickEntryDialogs';
 import { useAuth } from '@/contexts/AuthContext';
 import { factoryApi, productApi, productionApi, saleApi, materialApi, employeeApi } from '@/api';
+import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface QuickActionButtonProps {
   icon: LucideIcon;
