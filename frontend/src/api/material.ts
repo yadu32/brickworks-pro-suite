@@ -120,4 +120,10 @@ export const materialApi = {
   deleteUsage: async (id: string): Promise<void> => {
     await apiClient.delete(`/material-usage/${id}`);
   },
+
+  // Material Stock
+  getStock: async (materialId: string): Promise<{currentStock: number, totalPurchased: number, totalUsed: number, totalOut: number}> => {
+    const response = await apiClient.get(`/materials/${materialId}/stock`);
+    return response.data;
+  },
 };
