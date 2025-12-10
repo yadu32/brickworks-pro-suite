@@ -10,7 +10,8 @@ import {
   TrendingDown,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Crown
 } from 'lucide-react';
 import {
   DropdownMenu,
