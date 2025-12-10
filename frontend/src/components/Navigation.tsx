@@ -41,6 +41,7 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'expenses', label: 'Other Expenses', icon: TrendingDown },
     { id: 'weekly', label: 'Reports', icon: Calendar },
+    { id: 'subscription', label: 'Subscription & Pricing', icon: Crown },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
