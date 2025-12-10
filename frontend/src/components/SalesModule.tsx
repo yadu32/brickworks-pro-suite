@@ -73,7 +73,7 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   });
   const { toast } = useToast();
   const { factoryId: hookFactoryId } = useFactory();
-  const isReadOnly = false;
+  const { guardAction, isReadOnly } = useSubscriptionGuard();
 
   useEffect(() => {
     if (hookFactoryId) {
@@ -82,7 +82,7 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   }, [hookFactoryId]);
 
   const handleAddClick = () => {
-    setIsDialogOpen(true);
+    guardAction(() => setIsDialogOpen(true));
   };
 
   // Update showDuesOnly when initialShowDuesOnly prop changes
