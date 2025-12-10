@@ -29,8 +29,8 @@ const OtherExpensesModule = () => {
   const [expenses, setExpenses] = useState<OtherExpense[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [factoryId, setFactoryId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { factoryId } = useFactory();
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
