@@ -114,6 +114,11 @@ const UpgradePlanModal: React.FC = () => {
     }
   };
 
+  const handleGoToSubscriptionPage = () => {
+    setShowUpgradeModal(false);
+    window.dispatchEvent(new CustomEvent('changeTab', { detail: 'subscription' }));
+  };
+
   return (
     <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
       <DialogContent className="sm:max-w-[700px] bg-card border-border max-h-[90vh] overflow-y-auto">
