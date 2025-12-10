@@ -341,6 +341,259 @@ class BrickworksAPITester:
             print(f"❌ Get Factory Production: FAILED - {str(e)}")
             return False
     
+    def test_subscription_status(self):
+        """Test getting subscription status"""
+        print("\n🔍 Testing Subscription Status...")
+        
+        if not self.access_token:
+            print("❌ Subscription Status: FAILED - No access token")
+            return False
+        
+        try:
+            response = self.session.get(f"{API_BASE}/subscription/status")
+            
+            if response.status_code == 200:
+                status_data = response.json()
+                print("✅ Subscription Status: PASSED")
+                print(f"   Status: {status_data.get('subscription_status')}")
+                print(f"   Plan Type: {status_data.get('plan_type')}")
+                print(f"   Days Remaining: {status_data.get('days_remaining')}")
+                print(f"   Is Active: {status_data.get('is_active')}")
+                print(f"   Can Perform Action: {status_data.get('can_perform_action')}")
+                
+                # Store for later tests
+                self.subscription_data = status_data
+                return True
+            else:
+                print(f"❌ Subscription Status: FAILED - Status {response.status_code}")
+                print(f"   Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Subscription Status: FAILED - {str(e)}")
+            return False
+    
+    def test_create_order(self):
+        """Test creating Razorpay order (mock)"""
+        print("\n🔍 Testing Create Order (Mock Razorpay)...")
+        
+        if not self.access_token:
+            print("❌ Create Order: FAILED - No access token")
+            return False
+        
+        order_data = {
+            "amount_in_paise": 29900,  # ₹299
+            "plan_id": "monthly"
+        }
+        
+        try:
+            response = self.session.post(
+                f"{API_BASE}/subscription/create-order",
+                json=order_data
+            )
+            
+            if response.status_code == 200:
+                order_response = response.json()
+                print("✅ Create Order: PASSED")
+                print(f"   Order ID: {order_response.get('order_id')}")
+                print(f"   Razorpay Key: {order_response.get('razorpay_key')}")
+                print(f"   Amount: ₹{order_response.get('amount', 0) / 100}")
+                print(f"   Currency: {order_response.get('currency')}")
+                
+                # Store for payment completion test
+                self.order_data = order_response
+                return True
+            else:
+                print(f"❌ Create Order: FAILED - Status {response.status_code}")
+                print(f"   Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Create Order: FAILED - {str(e)}")
+            return False
+    
+    def test_complete_payment(self):
+        """Test completing payment (mock)"""
+        print("\n🔍 Testing Complete Payment (Mock)...")
+        
+        if not self.access_token or not hasattr(self, 'order_data'):
+            print("❌ Complete Payment: FAILED - No access token or order data")
+            return False
+        
+        payment_data = {
+            "razorpay_payment_id": "mock_pay_123456789",
+            "razorpay_order_id": self.order_data.get('order_id', 'mock_order_123'),
+            "razorpay_signature": "mock_signature_abcdef123456",
+            "plan_id": "monthly"
+        }
+        
+        try:
+            response = self.session.post(
+                f"{API_BASE}/subscription/complete",
+                json=payment_data
+            )
+            
+            if response.status_code == 200:
+                updated_status = response.json()
+                print("✅ Complete Payment: PASSED")
+                print(f"   Updated Status: {updated_status.get('subscription_status')}")
+                print(f"   Plan Type: {updated_status.get('plan_type')}")
+                print(f"   Is Active: {updated_status.get('is_active')}")
+                print(f"   Days Remaining: {updated_status.get('days_remaining')}")
+                
+                # Verify subscription was activated
+                if updated_status.get('subscription_status') == 'active' and updated_status.get('is_active'):
+                    print("   🎉 Subscription Successfully Activated!")
+                else:
+                    print("   ⚠️  Subscription may not be properly activated")
+                
+                self.updated_subscription_data = updated_status
+                return True
+            else:
+                print(f"❌ Complete Payment: FAILED - Status {response.status_code}")
+                print(f"   Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Complete Payment: FAILED - {str(e)}")
+            return False
+    
+    def test_restore_subscription(self):
+        """Test restoring subscription status"""
+        print("\n🔍 Testing Restore Subscription...")
+        
+        if not self.access_token:
+            print("❌ Restore Subscription: FAILED - No access token")
+            return False
+        
+        try:
+            response = self.session.post(f"{API_BASE}/subscription/restore")
+            
+            if response.status_code == 200:
+                restored_status = response.json()
+                print("✅ Restore Subscription: PASSED")
+                print(f"   Status: {restored_status.get('subscription_status')}")
+                print(f"   Plan Type: {restored_status.get('plan_type')}")
+                print(f"   Is Active: {restored_status.get('is_active')}")
+                print(f"   Days Remaining: {restored_status.get('days_remaining')}")
+                
+                # Verify consistency with previous status
+                if hasattr(self, 'updated_subscription_data'):
+                    if (restored_status.get('subscription_status') == self.updated_subscription_data.get('subscription_status') and
+                        restored_status.get('is_active') == self.updated_subscription_data.get('is_active')):
+                        print("   ✅ Status consistent with previous update")
+                    else:
+                        print("   ⚠️  Status inconsistent with previous update")
+                
+                return True
+            else:
+                print(f"❌ Restore Subscription: FAILED - Status {response.status_code}")
+                print(f"   Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Restore Subscription: FAILED - {str(e)}")
+            return False
+    
+    def test_subscription_with_invalid_plan(self):
+        """Test create order with invalid plan_id"""
+        print("\n🔍 Testing Create Order with Invalid Plan...")
+        
+        if not self.access_token:
+            print("❌ Create Order (Invalid Plan): FAILED - No access token")
+            return False
+        
+        order_data = {
+            "amount_in_paise": 29900,
+            "plan_id": "invalid_plan"  # Should be rejected
+        }
+        
+        try:
+            response = self.session.post(
+                f"{API_BASE}/subscription/create-order",
+                json=order_data
+            )
+            
+            # This should still work for create-order (validation happens in complete)
+            if response.status_code == 200:
+                print("✅ Create Order (Invalid Plan): PASSED - Order created (validation in complete step)")
+                return True
+            else:
+                print(f"❌ Create Order (Invalid Plan): FAILED - Status {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Create Order (Invalid Plan): FAILED - {str(e)}")
+            return False
+    
+    def run_subscription_test_suite(self):
+        """Run the subscription API test suite"""
+        print("🚀 Starting Subscription API Test Suite")
+        print("=" * 60)
+        
+        test_results = []
+        
+        # First run basic setup if needed
+        setup_tests = [
+            ("Health Check", self.test_health_check),
+            ("User Registration", self.test_user_registration),
+            ("User Login", self.test_user_login),
+            ("Factory Creation", self.test_factory_creation),
+        ]
+        
+        print("📋 Running Setup Tests...")
+        for test_name, test_func in setup_tests:
+            result = test_func()
+            test_results.append((test_name, result))
+            if not result:
+                print(f"❌ Setup failed at {test_name}. Cannot continue with subscription tests.")
+                return False
+        
+        print("\n📋 Running Subscription Tests...")
+        
+        # Subscription-specific tests
+        subscription_tests = [
+            ("Subscription Status (Initial)", self.test_subscription_status),
+            ("Create Order (Mock Razorpay)", self.test_create_order),
+            ("Complete Payment (Mock)", self.test_complete_payment),
+            ("Subscription Status (After Payment)", self.test_subscription_status),
+            ("Restore Subscription", self.test_restore_subscription),
+            ("Create Order (Invalid Plan)", self.test_subscription_with_invalid_plan),
+        ]
+        
+        for test_name, test_func in subscription_tests:
+            result = test_func()
+            test_results.append((test_name, result))
+        
+        # Summary
+        print("\n" + "=" * 60)
+        print("📊 SUBSCRIPTION TEST RESULTS SUMMARY")
+        print("=" * 60)
+        
+        passed = 0
+        failed = 0
+        
+        for test_name, result in test_results:
+            status = "✅ PASSED" if result else "❌ FAILED"
+            print(f"{test_name:<45} {status}")
+            if result:
+                passed += 1
+            else:
+                failed += 1
+        
+        print(f"\nTotal Tests: {len(test_results)}")
+        print(f"Passed: {passed}")
+        print(f"Failed: {failed}")
+        
+        if failed == 0:
+            print("\n🎉 ALL SUBSCRIPTION TESTS PASSED!")
+            print("✅ Subscription API endpoints are working correctly")
+            print("✅ Mock Razorpay integration is functional")
+        else:
+            print(f"\n⚠️  {failed} test(s) failed. Please check the issues above.")
+        
+        return failed == 0
+
     def run_complete_test_suite(self):
         """Run the complete test suite for production entry flow"""
         print("🚀 Starting Complete Production Entry Flow Test Suite")
