@@ -58,37 +58,19 @@ const OtherExpensesModule = () => {
     }).format(amount);
   };
 
-  const loadFactoryId = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: factory } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    
-    if (factory) {
-      setFactoryId(factory.id);
-    }
-  };
-
   const loadExpenses = async () => {
     if (!factoryId) return;
     
     setLoading(true);
-    const { data, error } = await supabase
-      .from('other_expenses')
-      .select('*')
-      .eq('factory_id', factoryId)
-      .order('date', { ascending: false });
-
-    if (error) {
-      toast({ title: 'Error loading expenses', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const data = await expenseApi.getOtherExpenses(factoryId);
       setExpenses(data || []);
+    } catch (error: any) {
+      console.error('Error loading expenses:', error);
+      toast({ title: 'Error loading expenses', description: error.response?.data?.detail || 'Failed to load expenses', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
