@@ -75,7 +75,7 @@ const MaterialsModule = () => {
   
   const { toast } = useToast();
   const { factoryId: hookFactoryId } = useFactory();
-  const isReadOnly = false;
+  const { guardAction, isReadOnly } = useSubscriptionGuard();
 
   useEffect(() => {
     if (hookFactoryId) {
@@ -84,11 +84,11 @@ const MaterialsModule = () => {
   }, [hookFactoryId]);
 
   const handleAddPurchaseClick = () => {
-    setIsPurchaseDialogOpen(true);
+    guardAction(() => setIsPurchaseDialogOpen(true));
   };
 
   const handleAddUsageClick = () => {
-    setIsUsageDialogOpen(true);
+    guardAction(() => setIsUsageDialogOpen(true));
   };
 
   const [purchaseForm, setPurchaseForm] = useState({
