@@ -74,10 +74,6 @@ const OtherExpensesModule = () => {
   };
 
   useEffect(() => {
-    loadFactoryId();
-  }, []);
-
-  useEffect(() => {
     if (factoryId) {
       loadExpenses();
     }
