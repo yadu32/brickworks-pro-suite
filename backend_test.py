@@ -657,8 +657,15 @@ def main():
     print(f"Testing against: {API_BASE}")
     print()
     
-    tester = BrickworksAPITester()
-    success = tester.run_complete_test_suite()
+    # Check if we should run subscription tests specifically
+    if len(sys.argv) > 1 and sys.argv[1] == "subscription":
+        print("🔔 Running Subscription API Tests Only")
+        tester = BrickworksAPITester()
+        success = tester.run_subscription_test_suite()
+    else:
+        print("🔔 Running Complete Test Suite")
+        tester = BrickworksAPITester()
+        success = tester.run_complete_test_suite()
     
     # Exit with appropriate code
     sys.exit(0 if success else 1)
