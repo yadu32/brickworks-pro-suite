@@ -46,98 +46,71 @@ const features = [
   'Priority Support',
 ];
 
+// Frontend placeholder — replace with real Razorpay checkout integration
+async function handleRazorpayPayment(amountInPaise: number, planId: string, onSuccess: () => void) {
+  // 1) POST /api/subscription/create-order { amount_in_paise, plan_id } -> returns { order_id, razorpay_key }
+  // 2) Launch Razorpay Checkout with orderId & razorpayKey (or simulate)
+  // 3) On payment success, call POST /api/subscription/complete { razorpay_payment_id, razorpay_order_id, razorpay_signature, plan_id }
+  console.log('handleRazorpayPayment called:', amountInPaise, planId);
+  
+  // MOCK: Simulate successful payment
+  toast.success('Mock payment successful! Activating subscription...');
+  
+  try {
+    // Call complete payment endpoint with mock data
+    await subscriptionApi.completePayment({
+      razorpay_payment_id: 'mock_payment_' + Date.now(),
+      razorpay_order_id: 'mock_order_' + Date.now(),
+      razorpay_signature: 'mock_signature',
+      plan_id: planId,
+    });
+    
+    toast.success('Subscription activated successfully!');
+    onSuccess();
+  } catch (error) {
+    console.error('Payment completion error:', error);
+    toast.error('Failed to activate subscription');
+  }
+}
+
 const UpgradePlanModal: React.FC = () => {
-  const { showUpgradeModal, setShowUpgradeModal, factoryId, refreshSubscription } = useSubscription();
+  const { showUpgradeModal, setShowUpgradeModal, refreshSubscription } = useSubscription();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | null>(null);
-
-  const loadRazorpayScript = (): Promise<boolean> => {
-    return new Promise((resolve) => {
-      if ((window as any).Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
 
   const handlePayment = async (plan: PlanDetails) => {
     setIsProcessing(true);
     setSelectedPlan(plan.type);
 
     try {
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        toast.error('Failed to load payment gateway');
-        setIsProcessing(false);
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Please login to continue');
-        setIsProcessing(false);
-        return;
-      }
-
-      const options = {
-        key: RAZORPAY_KEY,
-        amount: plan.discountedPrice * 100, // Amount in paise
-        currency: 'INR',
-        name: 'BrickWorks Manager',
-        description: `${plan.label} Subscription`,
-        prefill: {
-          email: user.email,
-        },
-        theme: {
-          color: '#FF6B00',
-        },
-        handler: async function (response: any) {
-          // Payment successful
-          console.log('Payment successful:', response);
-          
-          // Update subscription in database
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + plan.duration);
-
-          const { error } = await supabase
-            .from('factories')
-            .update({
-              subscription_status: 'active',
-              plan_type: plan.type,
-              plan_expiry_date: expiryDate.toISOString(),
-            })
-            .eq('id', factoryId);
-
-          if (error) {
-            console.error('Error updating subscription:', error);
-            toast.error('Payment received but failed to activate. Please contact support.');
-          } else {
-            toast.success('Subscription activated successfully!');
-            await refreshSubscription();
-            setShowUpgradeModal(false);
-          }
+      await handleRazorpayPayment(
+        plan.discountedPrice * 100,
+        plan.type,
+        async () => {
+          await refreshSubscription();
+          setShowUpgradeModal(false);
           setIsProcessing(false);
-        },
-        modal: {
-          ondismiss: function () {
-            setIsProcessing(false);
-            setSelectedPlan(null);
-          },
-        },
-      };
-
-      const razorpay = new (window as any).Razorpay(options);
-      razorpay.open();
+        }
+      );
     } catch (error) {
       console.error('Payment error:', error);
       toast.error('Failed to initiate payment');
+    } finally {
       setIsProcessing(false);
       setSelectedPlan(null);
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      toast.info('Restoring subscription...');
+      await subscriptionApi.restore();
+      await refreshSubscription();
+      toast.success('Subscription restored!');
+      setShowUpgradeModal(false);
+    } catch (error) {
+      console.error('Restore error:', error);
+      toast.error('Failed to restore subscription');
     }
   };
 
