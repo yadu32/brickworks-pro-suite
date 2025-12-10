@@ -526,6 +526,40 @@ class BrickworksAPITester:
             print(f"❌ Create Order (Invalid Plan): FAILED - {str(e)}")
             return False
     
+    def test_complete_payment_invalid_plan(self):
+        """Test completing payment with invalid plan_id"""
+        print("\n🔍 Testing Complete Payment with Invalid Plan...")
+        
+        if not self.access_token:
+            print("❌ Complete Payment (Invalid Plan): FAILED - No access token")
+            return False
+        
+        payment_data = {
+            "razorpay_payment_id": "mock_pay_invalid",
+            "razorpay_order_id": "mock_order_invalid",
+            "razorpay_signature": "mock_signature_invalid",
+            "plan_id": "invalid_plan"  # Should be rejected
+        }
+        
+        try:
+            response = self.session.post(
+                f"{API_BASE}/subscription/complete",
+                json=payment_data
+            )
+            
+            if response.status_code == 400:
+                print("✅ Complete Payment (Invalid Plan): PASSED - Properly rejected invalid plan_id")
+                return True
+            else:
+                print(f"❌ Complete Payment (Invalid Plan): FAILED - Should have rejected invalid plan_id")
+                print(f"   Status: {response.status_code}")
+                print(f"   Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Complete Payment (Invalid Plan): FAILED - {str(e)}")
+            return False
+    
     def run_subscription_test_suite(self):
         """Run the subscription API test suite"""
         print("🚀 Starting Subscription API Test Suite")
