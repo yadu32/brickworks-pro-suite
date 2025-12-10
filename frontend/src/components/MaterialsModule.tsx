@@ -64,7 +64,7 @@ const MaterialsModule = () => {
   const [editingPurchase, setEditingPurchase] = useState<MaterialPurchase | null>(null);
   const [editingUsage, setEditingUsage] = useState<MaterialUsage | null>(null);
   const [isAddSupplierDialogOpen, setIsAddSupplierDialogOpen] = useState(false);
-  const [supplierOptions, setSupplierOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [supplierOptions, setSupplierOptions] = useState<Array<{ value: string; label: string; phone?: string }>>([]);
   const [factoryId, setFactoryId] = useState<string | null>(null);
   
   // Pay Supplier Modal state
