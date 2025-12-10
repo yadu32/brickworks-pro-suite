@@ -14,6 +14,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddCustomerDialog } from '@/components/AddCustomerDialog';
 import { useFactory } from '@/hooks/useFactory';
 import { saleApi, customerApi, productApi } from '@/api';
+import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface ProductType {
   id: string;
