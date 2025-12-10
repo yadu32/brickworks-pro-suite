@@ -70,10 +70,14 @@ async function handleRazorpayPayment(amountInPaise: number, planId: string, onSu
 }
 
 const SubscriptionPage: React.FC = () => {
-  const navigate = useNavigate();
   const { refreshSubscription, isActive, subscriptionStatus, daysRemaining } = useSubscription();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | null>(null);
+
+  const handleBackToDashboard = () => {
+    // Use custom event to change tab in Index page
+    window.dispatchEvent(new CustomEvent('changeTab', { detail: 'dashboard' }));
+  };
 
   const handlePayment = async (plan: PlanDetails) => {
     setIsProcessing(true);
@@ -86,8 +90,8 @@ const SubscriptionPage: React.FC = () => {
         async () => {
           await refreshSubscription();
           setIsProcessing(false);
-          toast.success('Redirecting to dashboard...');
-          setTimeout(() => navigate('/'), 1000);
+          toast.success('Subscription activated! Redirecting to dashboard...');
+          setTimeout(() => handleBackToDashboard(), 1000);
         }
       );
     } catch (error) {
