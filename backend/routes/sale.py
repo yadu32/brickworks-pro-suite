@@ -90,6 +90,43 @@ async def update_sale(
     updated_sale = await db.sales.find_one({"id": sale_id})
     return Sale(**updated_sale)
 
+@router.post("/{sale_id}/receive-payment")
+async def receive_payment(
+    sale_id: str,
+    payment_data: dict,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Record payment received for a sale"""
+    sale = await db.sales.find_one({"id": sale_id})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+    
+    factory = await db.factories.find_one({"id": sale["factory_id"], "owner_id": current_user["sub"]})
+    if not factory:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    amount = payment_data.get("amount", 0)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than 0")
+    
+    current_received = sale.get("amount_received", 0)
+    new_received = current_received + amount
+    total_amount = sale.get("total_amount", 0)
+    new_balance = total_amount - new_received
+    
+    # Update sale with new payment
+    await db.sales.update_one(
+        {"id": sale_id},
+        {"$set": {
+            "amount_received": new_received,
+            "balance_due": max(0, new_balance)
+        }}
+    )
+    
+    updated_sale = await db.sales.find_one({"id": sale_id})
+    return Sale(**updated_sale)
+
 @router.delete("/{sale_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_sale(
     sale_id: str,
