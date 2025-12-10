@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, TrendingDown, AlertTriangle, Fuel, Calendar, Wallet, Lock } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, TrendingDown, AlertTriangle, Fuel, Calendar, Wallet, Lock, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
