@@ -246,55 +246,35 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   const applyFIFOPayments = async (customerName: string, paymentAmount: number, newSaleId?: string) => {
     if (!factoryId) return paymentAmount;
     
-    // Get all unpaid sales for this customer, ordered by date (oldest first)
-    const { data: unpaidSales, error } = await supabase
-      .from('sales')
-      .select('*')
-      .eq('factory_id', factoryId)
-      .eq('customer_name', customerName)
-      .gt('balance_due', 0)
-      .order('date', { ascending: true });
+    try {
+      // Get all unpaid sales for this customer, ordered by date (oldest first)
+      const allSales = await saleApi.getByFactory(factoryId);
+      const unpaidSales = allSales
+        .filter(s => s.customer_name === customerName && s.balance_due > 0 && s.id !== newSaleId)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    if (error) {
-      console.error('Error fetching unpaid sales:', error);
+      let remainingPayment = paymentAmount;
+
+      // Apply payment to oldest unpaid sales first
+      for (const sale of unpaidSales) {
+        if (remainingPayment <= 0) break;
+        
+        const amountToApply = Math.min(remainingPayment, sale.balance_due);
+        
+        try {
+          await saleApi.receivePayment(sale.id, amountToApply);
+          remainingPayment -= amountToApply;
+        } catch (error) {
+          console.error('Error updating sale payment:', error);
+        }
+      }
+
+      return remainingPayment;
+    } catch (error) {
+      console.error('Error in applyFIFOPayments:', error);
+      toast({ title: 'Error', description: 'Failed to process payment', variant: 'destructive' });
       return paymentAmount;
     }
-
-    let remainingPayment = paymentAmount;
-    const updatedSales: any[] = [];
-
-    // Apply payment to oldest unpaid sales first
-    for (const sale of unpaidSales || []) {
-      if (remainingPayment <= 0) break;
-      
-      // Skip the new sale we just created to avoid double-applying payment
-      if (sale.id === newSaleId) continue;
-
-      const amountToApply = Math.min(remainingPayment, sale.balance_due);
-      const newAmountReceived = sale.amount_received + amountToApply;
-      const newBalanceDue = sale.balance_due - amountToApply;
-
-      updatedSales.push({
-        id: sale.id,
-        amount_received: newAmountReceived,
-        balance_due: newBalanceDue
-      });
-
-      remainingPayment -= amountToApply;
-    }
-
-    // Update all affected sales
-    for (const updatedSale of updatedSales) {
-      await supabase
-        .from('sales')
-        .update({
-          amount_received: updatedSale.amount_received,
-          balance_due: updatedSale.balance_due
-        })
-        .eq('id', updatedSale.id);
-    }
-
-    return remainingPayment;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
