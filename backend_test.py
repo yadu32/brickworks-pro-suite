@@ -626,6 +626,7 @@ class BrickworksAPITester:
             ("Restore Subscription", self.test_restore_subscription),
             ("Create Order (Invalid Plan)", self.test_subscription_with_invalid_plan),
             ("Complete Payment (Invalid Plan)", self.test_complete_payment_invalid_plan),
+            ("Lifetime Subscription Simulation", self.test_lifetime_subscription_simulation),
         ]
         
         for test_name, test_func in subscription_tests:
