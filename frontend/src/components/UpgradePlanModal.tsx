@@ -121,14 +121,14 @@ const UpgradePlanModal: React.FC = () => {
           <div className="flex justify-center mb-3">
             <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-4 py-1.5 text-sm font-semibold">
               <Sparkles className="h-4 w-4 mr-1" />
-              50% OFF - Launch Offer!
+              Limited Time Launch Offer
             </Badge>
           </div>
           <DialogTitle className="text-2xl font-bold text-foreground">
-            Upgrade Your Plan
+            Upgrade to BrickWorks Premium
           </DialogTitle>
           <p className="text-muted-foreground mt-1">
-            Unlock all features and grow your business
+            Your free trial has ended. Continue managing your factory with unlimited access.
           </p>
         </DialogHeader>
 
@@ -137,14 +137,18 @@ const UpgradePlanModal: React.FC = () => {
             <div
               key={plan.type}
               className={`relative rounded-xl border-2 p-5 transition-all ${
-                plan.badge 
-                  ? 'border-primary bg-primary/5' 
+                plan.type === 'yearly'
+                  ? 'border-amber-500 bg-amber-500/5 shadow-lg' 
                   : 'border-border hover:border-primary/50'
               }`}
             >
               {plan.badge && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground border-0">
-                  <Crown className="h-3 w-3 mr-1" />
+                <Badge className={`absolute -top-3 left-1/2 -translate-x-1/2 border-0 ${
+                  plan.type === 'yearly' 
+                    ? 'bg-amber-500 text-white' 
+                    : 'bg-green-500 text-white'
+                }`}>
+                  {plan.type === 'yearly' && <Crown className="h-3 w-3 mr-1" />}
                   {plan.badge}
                 </Badge>
               )}
@@ -159,30 +163,39 @@ const UpgradePlanModal: React.FC = () => {
                     ₹{plan.originalPrice.toLocaleString()}
                   </span>
                   <div className="flex items-baseline justify-center gap-1 mt-1">
-                    <span className="text-3xl font-bold text-foreground">
+                    <span className={`text-3xl font-bold ${
+                      plan.type === 'yearly' ? 'text-amber-500' : 'text-green-500'
+                    }`}>
                       ₹{plan.discountedPrice.toLocaleString()}
                     </span>
-                    <span className="text-muted-foreground">
-                      /{plan.type === 'monthly' ? 'month' : 'year'}
-                    </span>
                   </div>
-                  <Badge variant="secondary" className="mt-2 bg-green-500/20 text-green-400 border-0">
-                    Save {Math.round((1 - plan.discountedPrice / plan.originalPrice) * 100)}%
-                  </Badge>
+                  {plan.type === 'monthly' && (
+                    <p className="text-xs text-muted-foreground mt-1">Billed every month.</p>
+                  )}
+                  {plan.type === 'yearly' && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Billed once a year. Less than ₹250/month!
+                    </p>
+                  )}
                 </div>
 
                 <Button
-                  className="w-full font-semibold"
+                  className={`w-full font-semibold ${
+                    plan.type === 'yearly' 
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
                   size="lg"
                   onClick={() => handlePayment(plan)}
                   disabled={isProcessing}
+                  aria-label={plan.buttonText}
                 >
                   {isProcessing && selectedPlan === plan.type ? (
                     <>Processing...</>
                   ) : (
                     <>
                       <Zap className="h-4 w-4 mr-2" />
-                      Pay ₹{plan.discountedPrice.toLocaleString()} & Activate
+                      {plan.buttonText}
                     </>
                   )}
                 </Button>
@@ -195,7 +208,7 @@ const UpgradePlanModal: React.FC = () => {
           <h4 className="text-sm font-semibold text-foreground mb-3 text-center">
             Everything included:
           </h4>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {features.map((feature) => (
               <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -205,8 +218,17 @@ const UpgradePlanModal: React.FC = () => {
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground text-center mt-4">
-          Secure payment powered by Razorpay. Cancel anytime.
+        <div className="text-center mt-4">
+          <button 
+            onClick={handleRestore}
+            className="text-sm text-primary hover:underline"
+          >
+            Restore Purchase
+          </button>
+        </div>
+
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          Secure payment powered by Razorpay.
         </p>
       </DialogContent>
     </Dialog>
