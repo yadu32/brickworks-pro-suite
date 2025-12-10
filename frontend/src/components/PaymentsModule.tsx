@@ -46,7 +46,7 @@ const PaymentsModule = () => {
   const [factoryId, setFactoryId] = useState<string | null>(null);
   const { toast } = useToast();
   const { factoryId: hookFactoryId } = useFactory();
-  const isReadOnly = false;
+  const { guardAction, isReadOnly } = useSubscriptionGuard();
 
   useEffect(() => {
     if (hookFactoryId) {
@@ -55,11 +55,13 @@ const PaymentsModule = () => {
   }, [hookFactoryId]);
 
   const handleAddClick = () => {
-    // Auto-select first employee when opening dialog if available
-    if (employeeOptions.length > 0 && !paymentForm.employee_name) {
-      setPaymentForm(prev => ({ ...prev, employee_name: employeeOptions[0].value }));
-    }
-    setIsDialogOpen(true);
+    guardAction(() => {
+      // Auto-select first employee when opening dialog if available
+      if (employeeOptions.length > 0 && !paymentForm.employee_name) {
+        setPaymentForm(prev => ({ ...prev, employee_name: employeeOptions[0].value }));
+      }
+      setIsDialogOpen(true);
+    });
   };
 
   // Auto-calculated wages
