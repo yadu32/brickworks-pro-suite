@@ -521,6 +521,47 @@ const MaterialsModule = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label htmlFor="supplier">Supplier Name</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setIsAddSupplierDialogOpen(true)}
+                          className="h-7 text-xs"
+                        >
+                          <UserPlus className="h-3 w-3 mr-1" />
+                          Add New
+                        </Button>
+                      </div>
+                      <SearchableSelect
+                        value={purchaseForm.supplier_name}
+                        onValueChange={(value) => {
+                          const selectedSupplier = supplierOptions.find(s => s.value === value);
+                          setPurchaseForm({
+                            ...purchaseForm, 
+                            supplier_name: value,
+                            supplier_phone: selectedSupplier?.phone || ''
+                          });
+                        }}
+                        options={supplierOptions}
+                        placeholder="Select or type supplier name..."
+                        searchPlaceholder="Search suppliers..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Supplier Phone</Label>
+                      <Input
+                        id="phone"
+                        value={purchaseForm.supplier_phone}
+                        onChange={(e) => setPurchaseForm({...purchaseForm, supplier_phone: e.target.value})}
+                        readOnly={!!purchaseForm.supplier_name}
+                        className={purchaseForm.supplier_name ? "bg-muted" : ""}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
                       <Label htmlFor="quantity">Quantity Purchased</Label>
                       <Input
                         id="quantity"
@@ -548,30 +589,6 @@ const MaterialsModule = () => {
                       <p className="text-sm text-muted-foreground">Total Cost: {formatCurrency(Number(purchaseForm.quantity_purchased) * Number(purchaseForm.unit_cost))}</p>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="supplier">Supplier Name</Label>
-                      <SearchableSelect
-                        value={purchaseForm.supplier_name}
-                        onValueChange={(value) => {
-                          setPurchaseForm({...purchaseForm, supplier_name: value});
-                        }}
-                        options={supplierOptions}
-                        placeholder="Select supplier"
-                        searchPlaceholder="Search suppliers..."
-                        onAddNew={() => setIsAddSupplierDialogOpen(true)}
-                        addNewLabel="Add Supplier"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">Supplier Phone</Label>
-                      <Input
-                        id="phone"
-                        value={purchaseForm.supplier_phone}
-                        onChange={(e) => setPurchaseForm({...purchaseForm, supplier_phone: e.target.value})}
-                      />
-                    </div>
-                  </div>
                   <div>
                     <Label htmlFor="payment">Amount Paid (₹)</Label>
                     <Input
