@@ -8,6 +8,8 @@ import PaymentsModule from '@/components/PaymentsModule';
 import ReportsModule from '@/components/ReportsModule';
 import OtherExpensesModule from '@/components/OtherExpensesModule';
 import { SettingsHub } from '@/components/SettingsHub';
+import TrialExpiredBanner from '@/components/TrialExpiredBanner';
+import UpgradePlanModal from '@/components/UpgradePlanModal';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
