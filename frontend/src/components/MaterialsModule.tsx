@@ -126,9 +126,27 @@ const MaterialsModule = () => {
     
     try {
       const data = await materialApi.getByFactory(factoryId);
-      setMaterials(data || []);
+      
+      // Fetch accurate stock for each material
+      const materialsWithStock = await Promise.all(
+        data.map(async (material) => {
+          try {
+            const stockData = await materialApi.getStock(material.id);
+            return {
+              ...material,
+              current_stock_qty: stockData.currentStock
+            };
+          } catch (error) {
+            console.error(`Error fetching stock for material ${material.id}:`, error);
+            return material;
+          }
+        })
+      );
+      
+      setMaterials(materialsWithStock || []);
     } catch (error: any) {
-      toast({ title: 'Error loading materials', description: error.message, variant: 'destructive' });
+      console.error('Error loading materials:', error);
+      toast({ title: 'Error loading materials', description: error.response?.data?.detail || 'Failed to load materials', variant: 'destructive' });
     }
   };
 
