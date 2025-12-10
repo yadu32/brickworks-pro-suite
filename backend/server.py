@@ -21,6 +21,7 @@ from routes import (
     employee_payment_router,
     factory_rate_router,
     other_expense_router,
+    subscription_router,
 )
 from database import get_db_client
 
