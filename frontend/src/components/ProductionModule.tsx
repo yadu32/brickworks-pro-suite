@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useFactory } from '@/hooks/useFactory';
 import { productApi, productionApi, ProductDefinition, ProductionLog } from '@/api';
+import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface FormData {
   date: string;
