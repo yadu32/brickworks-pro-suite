@@ -14,8 +14,16 @@ import SubscriptionPage from '@/pages/SubscriptionPage';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
 const Index = () => {
+  const { isTrialExpired, isActive, isLoading } = useSubscription();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [salesFilter, setSalesFilter] = useState<{ showDuesOnly?: boolean }>({});
+
+  // Auto-redirect to subscription page if trial expired and no active subscription
+  useEffect(() => {
+    if (!isLoading && isTrialExpired && !isActive) {
+      setActiveTab('subscription');
+    }
+  }, [isTrialExpired, isActive, isLoading]);
 
   useEffect(() => {
     const handleTabChange = (event: CustomEvent) => {
