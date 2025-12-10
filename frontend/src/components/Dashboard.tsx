@@ -63,10 +63,10 @@ const Dashboard = () => {
   const [weeklyPayments, setWeeklyPayments] = useState(0);
 
   const { user } = useAuth();
-  const isReadOnly = false; // Subscription logic to be re-implemented later
+  const { guardAction, isReadOnly } = useSubscriptionGuard();
 
   const handleQuickAction = (action: 'sale' | 'production' | 'usage' | 'payment') => {
-    setQuickEntryType(action);
+    guardAction(() => setQuickEntryType(action));
   };
 
   const loadFactory = async () => {
