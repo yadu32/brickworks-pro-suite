@@ -5,7 +5,11 @@ import os
 import logging
 from pathlib import Path
 
-# Import all routes
+# CRITICAL: Load environment variables FIRST before any other imports
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# Import all routes AFTER loading env vars
 from routes import (
     auth_router,
     factory_router,
@@ -24,9 +28,6 @@ from routes import (
     subscription_router,
 )
 from database import get_db_client
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
 
 # Create the main app
 app = FastAPI(title="Brickworks Pro Suite API", version="1.0.0")
