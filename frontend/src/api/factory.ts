@@ -15,6 +15,8 @@ export interface Factory {
 export interface FactoryCreate {
   name: string;
   location?: string;
+  owner_name?: string;
+  contact_number?: string;
 }
 
 export const factoryApi = {
