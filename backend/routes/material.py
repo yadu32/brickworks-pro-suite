@@ -78,20 +78,20 @@ async def get_material_stock(
     if not factory:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Calculate total purchased from material_purchases collection (optimized)
+    # Calculate total purchased from material_purchases collection (optimized with limit)
     purchases_cursor = db.material_purchases.find(
         {"material_id": material_id},
         {"quantity_purchased": 1}
     )
-    purchases = await purchases_cursor.to_list(None)
+    purchases = await purchases_cursor.to_list(10000)  # Reasonable limit for production
     total_purchased = sum(p.get("quantity_purchased", 0) for p in purchases)
     
-    # Calculate total used from material_usage collection (optimized)
+    # Calculate total used from material_usage collection (optimized with limit)
     usages_cursor = db.material_usage.find(
         {"material_id": material_id},
         {"quantity_used": 1}
     )
-    usages = await usages_cursor.to_list(None)
+    usages = await usages_cursor.to_list(10000)  # Reasonable limit for production
     total_used = sum(u.get("quantity_used", 0) for u in usages)
     
     # Current stock = purchased - used
