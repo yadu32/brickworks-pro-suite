@@ -83,6 +83,18 @@ logger = logging.getLogger(__name__)
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting Brickworks Pro Suite API...")
+    
+    # Test database connection on startup
+    try:
+        client = get_db_client()
+        # Ping the database to verify connection
+        await client.admin.command('ping')
+        logger.info(f"Successfully connected to MongoDB at {os.environ.get('MONGO_URL', 'default')}")
+        logger.info(f"Using database: {os.environ.get('DB_NAME', 'brickworks_db')}")
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {e}")
+        logger.error("Application will continue but database operations may fail")
+        # Don't raise - let the app start anyway for health checks
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
