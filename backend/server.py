@@ -42,7 +42,35 @@ async def root():
 
 @api_router.get("/health")
 async def health_check():
+    """Basic health check - returns healthy if server is running"""
     return {"status": "healthy"}
+
+@api_router.get("/health/db")
+async def database_health_check():
+    """Database health check - verifies MongoDB connection"""
+    try:
+        client = get_db_client()
+        await client.admin.command('ping')
+        db_name = os.environ.get('DB_NAME', 'brickworks_db')
+        # Try to count documents in a collection to verify database access
+        from database import get_database
+        db = await get_database()
+        # Just check if we can access the database
+        collections = await db.list_collection_names()
+        return {
+            "status": "healthy",
+            "database": db_name,
+            "connected": True,
+            "collections_count": len(collections)
+        }
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "database": os.environ.get('DB_NAME', 'brickworks_db'),
+            "connected": False,
+            "error": str(e)
+        }
 
 # Include all routers
 api_router.include_router(auth_router)
