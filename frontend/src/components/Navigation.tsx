@@ -31,7 +31,7 @@ interface NavigationProps {
 const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
   const { factory } = useFactory();
   const { logout } = useAuth();
-  const factoryName = factory?.name || 'BrickWorks Manager';
+  const factoryName = factory?.name || 'BricksFlow';
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
