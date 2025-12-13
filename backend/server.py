@@ -30,7 +30,7 @@ from routes import (
 from database import get_db_client
 
 # Create the main app
-app = FastAPI(title="Brickworks Pro Suite API", version="1.0.0")
+app = FastAPI(title="BricksFlow API", version="1.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
