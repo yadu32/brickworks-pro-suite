@@ -130,7 +130,7 @@ const UpgradePlanModal: React.FC = () => {
             </Badge>
           </div>
           <DialogTitle className="text-2xl font-bold text-foreground">
-            Upgrade to BrickWorks Premium
+            Upgrade to BricksFlow Premium
           </DialogTitle>
           <p className="text-muted-foreground mt-1">
             Your free trial has ended. Continue managing your factory with unlimited access.
