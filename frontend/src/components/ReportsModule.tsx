@@ -324,7 +324,7 @@ const ReportsModule = () => {
     const lines: string[] = [];
     
     // Header
-    lines.push('BrickWorks Manager - Detailed Report');
+    lines.push('BricksFlow - Detailed Report');
     lines.push(`Period: ${formatDate(reportData.startDate)} to ${formatDate(reportData.endDate)}`);
     lines.push('');
     
