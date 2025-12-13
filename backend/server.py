@@ -128,4 +128,4 @@ async def startup_event():
 async def shutdown_db_client():
     client = get_db_client()
     client.close()
-    logger.info("Shutting down Brickworks Pro Suite API...")
+    logger.info("Shutting down BricksFlow API...")
