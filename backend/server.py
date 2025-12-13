@@ -110,7 +110,7 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Starting Brickworks Pro Suite API...")
+    logger.info("Starting BricksFlow API...")
     
     # Test database connection on startup
     try:
