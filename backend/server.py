@@ -38,7 +38,7 @@ api_router = APIRouter(prefix="/api")
 # Health check endpoint
 @api_router.get("/")
 async def root():
-    return {"message": "Brickworks Pro Suite API", "status": "running"}
+    return {"message": "BricksFlow API", "status": "running"}
 
 @api_router.get("/health")
 async def health_check():
