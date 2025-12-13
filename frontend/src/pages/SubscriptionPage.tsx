@@ -144,7 +144,7 @@ const SubscriptionPage: React.FC = () => {
             Limited Time Launch Offer
           </Badge>
           <h1 className="text-4xl font-bold text-foreground mb-2">
-            Upgrade to BrickWorks Premium
+            Upgrade to BricksFlow Premium
           </h1>
           <p className="text-muted-foreground text-lg">
             Your free trial has ended. Continue managing your factory with unlimited access.
