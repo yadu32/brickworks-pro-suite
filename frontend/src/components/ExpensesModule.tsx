@@ -146,13 +146,45 @@ const ExpensesModule = () => {
     }
   };
 
+  // Calculate Employee Summaries from payments
+  const calculateEmployeeSummaries = (paymentsData: EmployeePayment[]) => {
+    const employeeMap = new Map<string, EmployeeSummary>();
+    
+    paymentsData.forEach(payment => {
+      const key = payment.employee_name.toLowerCase();
+      if (!employeeMap.has(key)) {
+        employeeMap.set(key, {
+          employee_name: payment.employee_name,
+          total_amount: 0,
+          payment_count: 0,
+          latest_payment: payment.date
+        });
+      }
+      
+      const employee = employeeMap.get(key)!;
+      employee.total_amount += payment.amount;
+      employee.payment_count += 1;
+      
+      if (payment.date > employee.latest_payment) {
+        employee.latest_payment = payment.date;
+      }
+    });
+    
+    setEmployees(Array.from(employeeMap.values()).sort((a, b) => b.total_amount - a.total_amount));
+  };
+
   useEffect(() => {
     if (factoryId) {
       loadPayments();
-      loadEmployees();
       loadExpenses();
     }
   }, [factoryId]);
+
+  useEffect(() => {
+    if (payments.length > 0) {
+      calculateEmployeeSummaries(payments);
+    }
+  }, [payments]);
 
   // Calculate monthly totals
   const currentMonth = new Date().getMonth();
