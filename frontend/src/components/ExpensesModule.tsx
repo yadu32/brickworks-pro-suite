@@ -117,19 +117,21 @@ const ExpensesModule = () => {
     }
   };
 
-  // Load Employees
-  const loadEmployees = async () => {
+  // Load Employee Names for dropdown
+  const loadEmployeeNames = async () => {
     if (!factoryId) return;
     
     try {
       const data = await employeeApi.getByFactory(factoryId);
-      setEmployees(data || []);
-      setEmployeeOptions(data.map((e: any) => ({
-        value: e.name,
-        label: e.name
-      })));
-    } catch (error: any) {
-      console.error('Error loading employees:', error);
+      const options = data?.map(emp => ({
+        value: emp.name,
+        label: emp.name
+      })) || [];
+      
+      setEmployeeOptions(options);
+    } catch (error) {
+      console.error('Error loading employees', error);
+      setEmployeeOptions([]);
     }
   };
 
