@@ -658,7 +658,7 @@ const ExpensesModule = () => {
         <AddEmployeeDialog
           open={isAddEmployeeOpen}
           onOpenChange={setIsAddEmployeeOpen}
-          onEmployeeAdded={loadEmployees}
+          onEmployeeAdded={loadEmployeeNames}
         />
 
         {/* Delete Expense Confirmation */}
