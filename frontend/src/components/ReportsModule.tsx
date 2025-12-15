@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Calendar, TrendingUp, Package, Users, DollarSign, Factory, Truck, Wrench, Building } from 'lucide-react';
+import { FileText, Download, Calendar, TrendingUp, Package, Users, DollarSign, Factory, Truck, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useFactory } from '@/hooks/useFactory';
+import { productionApi, saleApi, materialApi, employeeApi, expenseApi } from '@/api';
 
 interface ReportData {
   startDate: string;
@@ -57,7 +58,7 @@ interface ReportData {
 const ReportsModule = () => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [factoryId, setFactoryId] = useState<string | null>(null);
+  const { factoryId } = useFactory();
   const [dateRange, setDateRange] = useState({
     startDate: (() => {
       const date = new Date();
@@ -92,25 +93,6 @@ const ReportsModule = () => {
     });
   };
 
-  const loadFactoryId = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: factory } = await supabase
-      .from('factories')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    
-    if (factory) {
-      setFactoryId(factory.id);
-    }
-  };
-
-  useEffect(() => {
-    loadFactoryId();
-  }, []);
-
   useEffect(() => {
     if (factoryId) {
       generateReport();
@@ -118,79 +100,47 @@ const ReportsModule = () => {
   }, [factoryId]);
 
   const generateReport = async () => {
-    if (!factoryId) return;
+    if (!factoryId) {
+      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
+      return;
+    }
     
     setLoading(true);
     try {
-      // Fetch factory rates for wage calculations
-      const { data: rates } = await supabase
-        .from('factory_rates')
-        .select('*')
-        .eq('factory_id', factoryId)
-        .eq('is_active', true);
+      // Default rates for wage calculations (can be made configurable later)
+      const productionRate = 15; // per punch
+      const loadingRate = 2; // per brick
 
-      const productionRate = rates?.find(r => r.rate_type === 'production_per_punch')?.rate_amount || 15;
-      const loadingRate = rates?.find(r => r.rate_type === 'loading_per_brick')?.rate_amount || 2;
+      // Fetch all data in parallel
+      const [productionData, salesData, purchasesData, usageData, paymentsData, expensesData] = await Promise.all([
+        productionApi.getByFactory(factoryId, dateRange.startDate, dateRange.endDate),
+        saleApi.getByFactory(factoryId),
+        materialApi.getPurchasesByFactory(factoryId, dateRange.startDate, dateRange.endDate),
+        materialApi.getUsageByFactory(factoryId, dateRange.startDate, dateRange.endDate),
+        employeeApi.getPaymentsByFactory(factoryId, dateRange.startDate, dateRange.endDate),
+        expenseApi.getOtherExpenses(factoryId)
+      ]);
 
-      // Fetch production data
-      const { data: productionData } = await supabase
-        .from('production_logs')
-        .select('*, product_definitions(*)')
-        .eq('factory_id', factoryId)
-        .gte('date', dateRange.startDate)
-        .lte('date', dateRange.endDate)
-        .order('date');
+      // Filter sales and expenses by date range
+      const filteredSales = salesData.filter(s => {
+        const saleDate = new Date(s.date);
+        const start = new Date(dateRange.startDate);
+        const end = new Date(dateRange.endDate);
+        return saleDate >= start && saleDate <= end;
+      });
 
-      // Fetch sales data
-      const { data: salesData } = await supabase
-        .from('sales')
-        .select('*, product_definitions(*)')
-        .eq('factory_id', factoryId)
-        .gte('date', dateRange.startDate)
-        .lte('date', dateRange.endDate)
-        .order('date');
-
-      // Fetch material purchases
-      const { data: purchasesData } = await supabase
-        .from('material_purchases')
-        .select('*, materials(*)')
-        .eq('factory_id', factoryId)
-        .gte('date', dateRange.startDate)
-        .lte('date', dateRange.endDate)
-        .order('date');
-
-      // Fetch material usage
-      const { data: usageData } = await supabase
-        .from('material_usage')
-        .select('*, materials(*)')
-        .eq('factory_id', factoryId)
-        .gte('date', dateRange.startDate)
-        .lte('date', dateRange.endDate)
-        .order('date');
-
-      // Fetch employee payments
-      const { data: paymentsData } = await supabase
-        .from('employee_payments')
-        .select('*')
-        .eq('factory_id', factoryId)
-        .gte('date', dateRange.startDate)
-        .lte('date', dateRange.endDate)
-        .order('date');
-
-      // Fetch other expenses
-      const { data: expensesData } = await supabase
-        .from('other_expenses')
-        .select('*')
-        .eq('factory_id', factoryId)
-        .gte('date', dateRange.startDate)
-        .lte('date', dateRange.endDate)
-        .order('date');
+      const filteredExpenses = expensesData.filter(e => {
+        const expenseDate = new Date(e.date);
+        const start = new Date(dateRange.startDate);
+        const end = new Date(dateRange.endDate);
+        return expenseDate >= start && expenseDate <= end;
+      });
 
       // Calculate Production Summary
       const productionByType = new Map<string, { name: string; quantity: number; punches: number }>();
       let totalPunches = 0;
       productionData?.forEach(p => {
-        const typeName = p.product_definitions?.name || 'Unknown';
+        const typeName = p.product_name || 'Unknown';
         const existing = productionByType.get(typeName) || { name: typeName, quantity: 0, punches: 0 };
         existing.quantity += p.quantity;
         existing.punches += p.punches || 0;
@@ -199,9 +149,9 @@ const ReportsModule = () => {
       });
 
       // Calculate Sales Performance
-      const totalRevenue = salesData?.reduce((sum, s) => sum + Number(s.total_amount), 0) || 0;
-      const totalQtySold = salesData?.reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
-      const outstandingBalance = salesData?.reduce((sum, s) => sum + Number(s.balance_due), 0) || 0;
+      const totalRevenue = filteredSales?.reduce((sum, s) => sum + Number(s.total_amount || 0), 0) || 0;
+      const totalQtySold = filteredSales?.reduce((sum, s) => sum + Number(s.quantity_sold || 0), 0) || 0;
+      const outstandingBalance = filteredSales?.reduce((sum, s) => sum + Number(s.balance_due || 0), 0) || 0;
 
       // Calculate Materials Consumption
       const purchasesByMaterial = new Map<string, { name: string; quantity: number; cost: number }>();
@@ -209,27 +159,27 @@ const ReportsModule = () => {
       let totalPurchaseCost = 0;
 
       purchasesData?.forEach(p => {
-        const materialName = p.materials?.material_name || 'Unknown';
-        const cost = Number(p.quantity_purchased) * Number(p.unit_cost);
+        const materialName = p.material_name || 'Unknown';
+        const cost = Number(p.quantity_purchased || 0) * Number(p.unit_cost || 0);
         const existing = purchasesByMaterial.get(materialName) || { name: materialName, quantity: 0, cost: 0 };
-        existing.quantity += Number(p.quantity_purchased);
+        existing.quantity += Number(p.quantity_purchased || 0);
         existing.cost += cost;
         totalPurchaseCost += cost;
         purchasesByMaterial.set(materialName, existing);
       });
 
       usageData?.forEach(u => {
-        const materialName = u.materials?.material_name || 'Unknown';
+        const materialName = u.material_name || 'Unknown';
         const existing = usageByMaterial.get(materialName) || { name: materialName, quantity: 0 };
-        existing.quantity += Number(u.quantity_used);
+        existing.quantity += Number(u.quantity_used || 0);
         usageByMaterial.set(materialName, existing);
       });
 
       // Calculate Employee Payments
       let salary = 0, advance = 0, bonus = 0, incentive = 0;
       paymentsData?.forEach(p => {
-        const amount = Number(p.amount);
-        switch (p.payment_type.toLowerCase()) {
+        const amount = Number(p.amount || 0);
+        switch (p.payment_type?.toLowerCase()) {
           case 'salary': salary += amount; break;
           case 'advance': advance += amount; break;
           case 'bonus': bonus += amount; break;
@@ -246,9 +196,9 @@ const ReportsModule = () => {
 
       // Calculate Operating Expenses
       let transport = 0, utilities = 0, officeSalaries = 0, repairs = 0, miscellaneous = 0;
-      expensesData?.forEach(e => {
-        const amount = Number(e.amount);
-        switch (e.expense_type.toLowerCase()) {
+      filteredExpenses?.forEach(e => {
+        const amount = Number(e.amount || 0);
+        switch (e.expense_type?.toLowerCase()) {
           case 'transport': transport += amount; break;
           case 'utilities': utilities += amount; break;
           case 'office salaries':
@@ -273,7 +223,7 @@ const ReportsModule = () => {
           totalRevenue,
           totalQtySold,
           outstandingBalance,
-          records: salesData || []
+          records: filteredSales || []
         },
         materials: {
           purchased: Array.from(purchasesByMaterial.values()),
@@ -301,7 +251,7 @@ const ReportsModule = () => {
           repairs,
           miscellaneous,
           total: totalExpenses,
-          records: expensesData || []
+          records: filteredExpenses || []
         },
         netProfit,
         productionRecords: productionData || [],
@@ -309,10 +259,14 @@ const ReportsModule = () => {
         usageRecords: usageData || []
       });
 
-      toast({ title: 'Report generated successfully' });
-    } catch (error) {
+      toast({ title: 'Success', description: 'Report generated successfully' });
+    } catch (error: any) {
       console.error('Error generating report:', error);
-      toast({ title: 'Error generating report', description: 'Please try again', variant: 'destructive' });
+      toast({ 
+        title: 'Error generating report', 
+        description: error.response?.data?.detail || 'Please try again', 
+        variant: 'destructive' 
+      });
     } finally {
       setLoading(false);
     }
@@ -341,7 +295,7 @@ const ReportsModule = () => {
     lines.push('=== PRODUCTION RECORDS ===');
     lines.push('Date,Product,Quantity,Punches,Remarks');
     reportData.productionRecords.forEach(p => {
-      lines.push(`${p.date},${p.product_definitions?.name || p.product_name},${p.quantity},${p.punches || ''},${p.remarks || ''}`);
+      lines.push(`${p.date},${p.product_name},${p.quantity},${p.punches || ''},${p.remarks || ''}`);
     });
     lines.push('');
 
@@ -349,7 +303,7 @@ const ReportsModule = () => {
     lines.push('=== SALES RECORDS ===');
     lines.push('Date,Customer,Phone,Product,Quantity,Rate,Total,Received,Balance,Notes');
     reportData.sales.records.forEach(s => {
-      lines.push(`${s.date},${s.customer_name},${s.customer_phone || ''},${s.product_definitions?.name || ''},${s.quantity_sold},${s.rate_per_brick},${s.total_amount},${s.amount_received},${s.balance_due},${s.notes || ''}`);
+      lines.push(`${s.date},${s.customer_name},${s.customer_phone || ''},${s.product_name || ''},${s.quantity_sold},${s.rate_per_brick || ''},${s.total_amount},${s.amount_received || 0},${s.balance_due || 0},${s.notes || ''}`);
     });
     lines.push('');
 
@@ -358,7 +312,7 @@ const ReportsModule = () => {
     lines.push('Date,Material,Supplier,Quantity,Unit Cost,Total Cost,Payment Made,Notes');
     reportData.purchaseRecords.forEach(p => {
       const totalCost = Number(p.quantity_purchased) * Number(p.unit_cost);
-      lines.push(`${p.date},${p.materials?.material_name || ''},${p.supplier_name},${p.quantity_purchased},${p.unit_cost},${totalCost},${p.payment_made || 0},${p.notes || ''}`);
+      lines.push(`${p.date},${p.material_name},${p.supplier_name},${p.quantity_purchased},${p.unit_cost},${totalCost},${p.payment_made || 0},${p.notes || ''}`);
     });
     lines.push('');
 
@@ -366,7 +320,7 @@ const ReportsModule = () => {
     lines.push('=== MATERIAL USAGE ===');
     lines.push('Date,Material,Quantity,Purpose');
     reportData.usageRecords.forEach(u => {
-      lines.push(`${u.date},${u.materials?.material_name || ''},${u.quantity_used},${u.purpose}`);
+      lines.push(`${u.date},${u.material_name},${u.quantity_used},${u.purpose}`);
     });
     lines.push('');
 
@@ -390,11 +344,11 @@ const ReportsModule = () => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `brickworks-report-${reportData.startDate}-to-${reportData.endDate}.csv`;
+    link.download = `bricksflow-report-${reportData.startDate}-to-${reportData.endDate}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
 
-    toast({ title: 'Report exported successfully' });
+    toast({ title: 'Success', description: 'Report exported successfully' });
   };
 
   return (
