@@ -179,6 +179,7 @@ const ExpensesModule = () => {
     if (factoryId) {
       loadPayments();
       loadExpenses();
+      loadEmployeeNames();
     }
   }, [factoryId]);
 
