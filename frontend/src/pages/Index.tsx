@@ -55,8 +55,7 @@ const Index = () => {
         {activeTab === 'production' && <ProductionModule />}
         {activeTab === 'materials' && <MaterialsModule />}
         {activeTab === 'sales' && <SalesModule initialShowDuesOnly={salesFilter.showDuesOnly} />}
-        {activeTab === 'payments' && <PaymentsModule />}
-        {activeTab === 'expenses' && <OtherExpensesModule />}
+        {activeTab === 'expenses' && <ExpensesModule />}
         {activeTab === 'weekly' && <ReportsModule />}
         {activeTab === 'subscription' && <SubscriptionPage />}
         {activeTab === 'settings' && <SettingsHub />}
