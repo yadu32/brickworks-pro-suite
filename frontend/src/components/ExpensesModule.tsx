@@ -234,7 +234,6 @@ const ExpensesModule = () => {
       });
       setIsPaymentDialogOpen(false);
       await loadPayments();
-      await loadEmployees();
     } catch (error: any) {
       console.error('Error adding payment:', error);
       toast({ 
