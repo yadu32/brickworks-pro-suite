@@ -319,44 +319,43 @@ const ExpensesModule = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header with Two Buttons (like Materials page) */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-foreground">Expenses</h1>
+        {/* Header - Title on top, buttons below (like Materials page) */}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-4">Expenses</h1>
           <div className="flex gap-3">
             <Button onClick={handleAddPaymentClick} disabled={isReadOnly} className="btn-primary">
               <Plus className="h-4 w-4 mr-2" />
               Add Payment
             </Button>
-            <Button onClick={handleAddExpenseClick} disabled={isReadOnly} className="btn-secondary">
+            <Button onClick={handleAddExpenseClick} disabled={isReadOnly} className="btn-primary">
               <Plus className="h-4 w-4 mr-2" />
               Add Expense
             </Button>
           </div>
         </div>
 
-        {/* Monthly Summary Card (Two metrics side-by-side) */}
-        <Card className="card-dark">
-          <CardHeader>
-            <CardTitle className="text-foreground flex items-center">
-              <DollarSign className="h-5 w-5 mr-2 text-primary" />
-              Monthly Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Monthly Summary Card (Like Sales Summary) */}
+        <section className="animate-fade-in">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Monthly Summary</h2>
+          <div className="card-metric">
             <div className="grid grid-cols-2 gap-6">
-              <div className="bg-warning/10 rounded-lg p-6 text-center">
-                <p className="text-muted-foreground text-sm font-medium mb-2">Monthly Payments</p>
-                <p className="text-4xl font-bold text-warning">{formatCurrency(monthlyPayments)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Labor Cost</p>
+              <div className="text-center">
+                <Users className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-secondary">Monthly Payments</p>
+                <p className="text-2xl font-bold text-success">
+                  {formatCurrency(monthlyPayments)}
+                </p>
               </div>
-              <div className="bg-destructive/10 rounded-lg p-6 text-center">
-                <p className="text-muted-foreground text-sm font-medium mb-2">Monthly Expenses</p>
-                <p className="text-4xl font-bold text-destructive">{formatCurrency(monthlyExpenses)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Operational Cost</p>
+              <div className="text-center">
+                <TrendingDown className="h-8 w-8 text-destructive mx-auto mb-2" />
+                <p className="text-secondary">Monthly Expenses</p>
+                <p className="text-2xl font-bold text-destructive">
+                  {formatCurrency(monthlyExpenses)}
+                </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {/* Employee Summary Table (Keep as is) */}
         <Card className="card-dark">
