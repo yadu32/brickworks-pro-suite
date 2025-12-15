@@ -115,9 +115,9 @@ const ReportsModule = () => {
       const [productionData, salesData, purchasesData, usageData, paymentsData, expensesData] = await Promise.all([
         productionApi.getByFactory(factoryId, dateRange.startDate, dateRange.endDate),
         saleApi.getByFactory(factoryId),
-        materialApi.getPurchasesByFactory(factoryId, dateRange.startDate, dateRange.endDate),
-        materialApi.getUsageByFactory(factoryId, dateRange.startDate, dateRange.endDate),
-        employeeApi.getPaymentsByFactory(factoryId, dateRange.startDate, dateRange.endDate),
+        materialApi.getPurchases(factoryId, dateRange.startDate, dateRange.endDate),
+        materialApi.getUsage(factoryId, dateRange.startDate, dateRange.endDate),
+        employeeApi.getPayments(factoryId, dateRange.startDate, dateRange.endDate),
         expenseApi.getOtherExpenses(factoryId)
       ]);
 
