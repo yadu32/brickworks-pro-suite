@@ -92,6 +92,12 @@ api_router.include_router(subscription_router)
 # Include the router in the main app
 app.include_router(api_router)
 
+# Root-level health check endpoint (for load balancers/monitoring)
+@app.get("/health")
+async def root_health_check():
+    """Root-level health check endpoint for load balancers"""
+    return {"status": "healthy", "service": "BricksFlow API"}
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
