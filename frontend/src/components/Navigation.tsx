@@ -103,6 +103,16 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
                     <LogOut className="h-5 w-5" />
                     <span className="font-medium">Logout</span>
                   </button>
+                  
+                  {/* Version Display */}
+                  <div className="mt-auto pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground text-center">
+                      BricksFlow v2.0.0
+                    </p>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Build: Dec 16, 2025
+                    </p>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
