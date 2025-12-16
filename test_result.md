@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the production entry creation flow to ensure the 'Invalid UUID' bug is fixed. User was experiencing 'Failed to save production record' errors when product_id was empty before data loaded. Fix implemented using useEffect to auto-select first product when data loads."
+user_problem_statement: "Test the new navigation structure implemented in BricksFlow app. Testing requirements: 1) Bottom Navigation Bar with 5 tabs (Dashboard, Production, Sales, Materials, Expenses) with proper icons, 2) Hamburger Menu with administrative items (Reports, Subscription & Pricing, Settings, Logout), 3) Navigation flow between pages, 4) Visual verification on mobile and desktop viewports."
 
 backend:
   - task: "User Registration API"
