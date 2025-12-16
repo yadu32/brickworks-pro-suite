@@ -270,11 +270,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Navigation Component - Bottom Navigation Bar"
-    - "Navigation Component - Hamburger Menu"
-    - "Navigation Flow and Page Routing"
     - "User Registration and Onboarding Flow"
-  stuck_tasks: []
+  stuck_tasks:
+    - "User Registration and Onboarding Flow"
   test_all: false
   test_priority: "high_first"
 
