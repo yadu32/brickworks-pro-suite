@@ -292,60 +292,115 @@ const ProductionModule = () => {
           ))}
         </div>
 
-        {/* Production Records Table */}
-        <div className="bg-card rounded-lg border border-border p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Production Records</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4">Date</th>
-                  <th className="text-left py-3 px-4">Product</th>
-                  <th className="text-right py-3 px-4">Punches</th>
-                  <th className="text-right py-3 px-4">Quantity</th>
-                  <th className="text-right py-3 px-4">Efficiency</th>
-                  <th className="text-left py-3 px-4">Remarks</th>
-                  <th className="text-right py-3 px-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {productionRecords.map(record => {
-                  const expected = calculateExpected(record.punches || 0, record.product_id);
-                  const efficiency = calculateEfficiency(record.quantity, expected);
-                  
-                  return (
-                    <tr key={record.id} className="border-b border-border hover:bg-muted/50">
-                      <td className="py-3 px-4">{new Date(record.date || '').toLocaleDateString()}</td>
-                      <td className="py-3 px-4">{record.product_name}</td>
-                      <td className="py-3 px-4 text-right">{record.punches || '-'}</td>
-                      <td className="py-3 px-4 text-right">{record.quantity}</td>
-                      <td className="py-3 px-4 text-right">
-                        <span className={efficiency >= 100 ? 'text-success' : efficiency >= 90 ? 'text-warning' : 'text-destructive'}>
-                          {efficiency > 0 ? `${efficiency.toFixed(1)}%` : '-'}
+        {/* Production Records - Card Layout */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold text-foreground">Production Records</h2>
+          
+          {productionRecords.length === 0 ? (
+            <div className="bg-card rounded-lg border border-border p-12 text-center">
+              <Factory className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No production records yet</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {productionRecords.map(record => {
+                const expected = calculateExpected(record.punches || 0, record.product_id);
+                const efficiency = calculateEfficiency(record.quantity, expected);
+                
+                return (
+                  <div 
+                    key={record.id} 
+                    className="bg-card rounded-lg border border-border p-5 hover:shadow-lg transition-shadow"
+                  >
+                    {/* Card Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground">
+                          {new Date(record.date || '').toLocaleDateString()}
                         </span>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground">{record.remarks || '-'}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2 justify-end">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(record)} disabled={isReadOnly}>
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => setDeleteDialogState({open: true, id: record.id})}
-                            disabled={isReadOnly}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                      </div>
+                      <div className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium">
+                        {record.product_name}
+                      </div>
+                    </div>
+
+                    {/* Card Body - Two Column Layout */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      {/* Left Column */}
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Punches</p>
+                          <p className="text-xl font-semibold text-foreground">
+                            {record.punches || '-'}
+                          </p>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Actual</p>
+                          <p className="text-xl font-semibold text-foreground">
+                            {record.quantity}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right Column */}
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Expected</p>
+                          <p className="text-xl font-semibold text-foreground">
+                            {expected > 0 ? expected : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Efficiency</p>
+                          <p className={`text-xl font-semibold ${
+                            efficiency >= 100 ? 'text-success' : 
+                            efficiency >= 90 ? 'text-warning' : 
+                            'text-destructive'
+                          }`}>
+                            {efficiency > 0 ? `${efficiency.toFixed(1)}%` : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Remarks (if any) */}
+                    {record.remarks && (
+                      <div className="mb-4 p-3 bg-muted/50 rounded-md">
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Remarks:</span> {record.remarks}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Card Footer - Actions */}
+                    <div className="flex gap-2 pt-3 border-t border-border">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleEdit(record)} 
+                        disabled={isReadOnly}
+                        className="flex-1"
+                      >
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => setDeleteDialogState({open: true, id: record.id})}
+                        disabled={isReadOnly}
+                        className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
