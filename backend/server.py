@@ -6,8 +6,14 @@ import logging
 from pathlib import Path
 
 # CRITICAL: Load environment variables FIRST before any other imports
+# In production (Kubernetes), env vars are injected by the platform
+# In development, load from .env file if it exists
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+env_path = ROOT_DIR / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+else:
+    load_dotenv()  # Try to load from parent directories or use injected env vars
 
 # Import all routes AFTER loading env vars
 from routes import (
