@@ -258,7 +258,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Subscription API Testing Complete"
+    - "Navigation Component - Bottom Navigation Bar"
+    - "Navigation Component - Hamburger Menu"
+    - "Navigation Flow and Page Routing"
+    - "User Registration and Onboarding Flow"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
