@@ -40,9 +40,16 @@ const AIAssistant = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const getEndpoint = () => {
+    const webhookUrl = import.meta.env.VITE_AI_WEBHOOK_URL || import.meta.env.REACT_APP_AI_WEBHOOK_URL;
+    
+    if (!webhookUrl) {
+      console.warn('AI_WEBHOOK_URL not configured. AI Assistant will not function.');
+      return '';
+    }
+    
     return env === 'test'
-      ? 'http://localhost:5678/webhook-test/brickworks-agent'
-      : 'http://localhost:5678/webhook/brickworks-agent';
+      ? `${webhookUrl}/webhook-test/brickworks-agent`
+      : `${webhookUrl}/webhook/brickworks-agent`;
   };
 
   const addMessage = (content: string, role: 'user' | 'assistant', isError = false) => {
