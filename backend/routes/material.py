@@ -78,21 +78,27 @@ async def get_material_stock(
     if not factory:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Calculate total purchased from material_purchases collection (optimized with limit)
-    purchases_cursor = db.material_purchases.find(
-        {"material_id": material_id},
-        {"quantity_purchased": 1}
-    )
-    purchases = await purchases_cursor.to_list(10000)  # Reasonable limit for production
-    total_purchased = sum(p.get("quantity_purchased", 0) for p in purchases)
+    # Calculate total purchased using MongoDB aggregation (optimized for production)
+    purchase_pipeline = [
+        {"$match": {"material_id": material_id}},
+        {"$group": {
+            "_id": None,
+            "total": {"$sum": "$quantity_purchased"}
+        }}
+    ]
+    purchase_result = await db.material_purchases.aggregate(purchase_pipeline).to_list(1)
+    total_purchased = purchase_result[0]["total"] if purchase_result else 0
     
-    # Calculate total used from material_usage collection (optimized with limit)
-    usages_cursor = db.material_usage.find(
-        {"material_id": material_id},
-        {"quantity_used": 1}
-    )
-    usages = await usages_cursor.to_list(10000)  # Reasonable limit for production
-    total_used = sum(u.get("quantity_used", 0) for u in usages)
+    # Calculate total used using MongoDB aggregation (optimized for production)
+    usage_pipeline = [
+        {"$match": {"material_id": material_id}},
+        {"$group": {
+            "_id": None,
+            "total": {"$sum": "$quantity_used"}
+        }}
+    ]
+    usage_result = await db.material_usage.aggregate(usage_pipeline).to_list(1)
+    total_used = usage_result[0]["total"] if usage_result else 0
     
     # Current stock = purchased - used
     current_stock = total_purchased - total_used
