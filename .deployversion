@@ -1,0 +1,5 @@
+BUILD_VERSION=2.0.0
+BUILD_DATE=2025-12-16T21:45:00Z
+BUILD_ID=bricksflow-v2-production-cards-nav
+CHANGES=Production records now use card layout, New bottom navigation with 5 tabs, Merged Expenses page
+FORCE_REBUILD=true
