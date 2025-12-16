@@ -1,3 +1,8 @@
+/**
+ * BricksFlow App - Version 2.0.0
+ * Build: December 16, 2025 - 21:45 UTC
+ * Changes: Card-based production records, new navigation with bottom bar
+ */
 import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
