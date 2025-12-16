@@ -50,7 +50,7 @@ const Index = () => {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <TrialExpiredBanner />
       <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
-      <div className="transition-all duration-300 ease-in-out">
+      <div className="transition-all duration-300 ease-in-out pb-20 md:pb-0">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'production' && <ProductionModule />}
         {activeTab === 'materials' && <MaterialsModule />}
