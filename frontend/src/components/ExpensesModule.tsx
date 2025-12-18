@@ -132,9 +132,11 @@ const ExpensesModule = () => {
       })) || [];
       
       setEmployeeOptions(options);
+      setEmployeeList(data?.map(emp => ({ id: emp.id, name: emp.name })) || []);
     } catch (error) {
       console.error('Error loading employees', error);
       setEmployeeOptions([]);
+      setEmployeeList([]);
     }
   };
 
