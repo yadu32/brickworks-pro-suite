@@ -26,6 +26,7 @@ interface EmployeePayment {
 }
 
 interface EmployeeSummary {
+  employee_id: string;
   employee_name: string;
   total_amount: number;
   payment_count: number;
