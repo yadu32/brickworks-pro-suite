@@ -191,10 +191,10 @@ const ExpensesModule = () => {
   }, [factoryId]);
 
   useEffect(() => {
-    if (payments.length > 0) {
-      calculateEmployeeSummaries(payments);
+    if (payments.length > 0 || employeeList.length > 0) {
+      calculateEmployeeSummaries(payments, employeeList);
     }
-  }, [payments]);
+  }, [payments, employeeList]);
 
   // Calculate monthly totals
   const currentMonth = new Date().getMonth();
