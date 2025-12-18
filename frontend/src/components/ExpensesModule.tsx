@@ -381,7 +381,7 @@ const ExpensesModule = () => {
           </div>
         </section>
 
-        {/* Employee Summary Table (Keep as is) */}
+        {/* Employee Summary Table */}
         <Card className="card-dark">
           <CardHeader>
             <CardTitle className="text-foreground flex items-center">
@@ -398,12 +398,13 @@ const ExpensesModule = () => {
                     <TableHead className="text-secondary text-right">Total Paid</TableHead>
                     <TableHead className="text-secondary text-right">Payments</TableHead>
                     <TableHead className="text-secondary text-right">Last Payment</TableHead>
+                    <TableHead className="text-secondary text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {employees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                         No employee data available
                       </TableCell>
                     </TableRow>
@@ -417,6 +418,17 @@ const ExpensesModule = () => {
                         <TableCell className="text-right text-foreground">{emp.payment_count}</TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {new Date(emp.latest_payment).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteEmployeeId(emp.employee_id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            disabled={!emp.employee_id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
