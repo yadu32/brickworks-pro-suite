@@ -57,6 +57,7 @@ const ExpensesModule = () => {
   const [expenses, setExpenses] = useState<OtherExpense[]>([]);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
+  const [deleteEmployeeId, setDeleteEmployeeId] = useState<string | null>(null);
   
   // Common states
   const [factoryId, setFactoryId] = useState<string | null>(null);
