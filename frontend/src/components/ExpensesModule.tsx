@@ -154,13 +154,15 @@ const ExpensesModule = () => {
   };
 
   // Calculate Employee Summaries from payments
-  const calculateEmployeeSummaries = (paymentsData: EmployeePayment[]) => {
+  const calculateEmployeeSummaries = (paymentsData: EmployeePayment[], empList: Array<{ id: string; name: string }>) => {
     const employeeMap = new Map<string, EmployeeSummary>();
     
     paymentsData.forEach(payment => {
       const key = payment.employee_name.toLowerCase();
+      const empData = empList.find(e => e.name.toLowerCase() === key);
       if (!employeeMap.has(key)) {
         employeeMap.set(key, {
+          employee_id: empData?.id || '',
           employee_name: payment.employee_name,
           total_amount: 0,
           payment_count: 0,
