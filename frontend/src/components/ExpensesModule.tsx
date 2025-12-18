@@ -308,6 +308,23 @@ const ExpensesModule = () => {
     }
   };
 
+  // Delete Employee
+  const deleteEmployee = async (id: string) => {
+    try {
+      await employeeApi.delete(id);
+      toast({ title: 'Success', description: 'Employee deleted successfully' });
+      await loadEmployeeNames();
+      await loadPayments();
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || 'Failed to delete employee', 
+        variant: 'destructive' 
+      });
+    }
+  };
+
   const handleAddPaymentClick = () => {
     guardAction(() => {
       if (employeeOptions.length > 0 && !paymentForm.employee_name) {
