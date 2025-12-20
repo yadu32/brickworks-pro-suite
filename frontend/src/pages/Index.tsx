@@ -60,6 +60,7 @@ const Index = () => {
         {activeTab === 'weekly' && <ReportsModule />}
         {activeTab === 'subscription' && <SubscriptionPage />}
         {activeTab === 'settings' && <SettingsHub />}
+        {activeTab === 'admin' && <AdminDashboard />}
       </div>
       <UpgradePlanModal />
     </div>
