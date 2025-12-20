@@ -10,6 +10,7 @@ import { SettingsHub } from '@/components/SettingsHub';
 import TrialExpiredBanner from '@/components/TrialExpiredBanner';
 import UpgradePlanModal from '@/components/UpgradePlanModal';
 import SubscriptionPage from '@/pages/SubscriptionPage';
+import AdminDashboard from '@/components/AdminDashboard';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
 const Index = () => {
