@@ -49,6 +49,7 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
     { id: 'weekly', label: 'Reports', icon: FileText },
     { id: 'subscription', label: 'Subscription & Pricing', icon: Crown },
     { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'admin', label: 'Admin Dashboard', icon: Shield },
   ];
 
   const handleTabChange = (tabId: string) => {
