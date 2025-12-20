@@ -11,7 +11,8 @@ import {
   X,
   LogOut,
   Crown,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react';
 import {
   Sheet,
