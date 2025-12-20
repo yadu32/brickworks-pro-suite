@@ -13,6 +13,7 @@ from .employee_payment import router as employee_payment_router
 from .factory_rate import router as factory_rate_router
 from .other_expense import router as other_expense_router
 from .subscription import router as subscription_router
+from .admin import router as admin_router
 
 __all__ = [
     'auth_router',
@@ -30,4 +31,5 @@ __all__ = [
     'factory_rate_router',
     'other_expense_router',
     'subscription_router',
+    'admin_router',
 ]
