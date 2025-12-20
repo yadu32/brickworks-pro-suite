@@ -20,7 +20,8 @@ async def register(user_data: UserCreate, db: AsyncIOMotorDatabase = Depends(get
     # Create new user
     user = User(
         email=user_data.email,
-        hashed_password=get_password_hash(user_data.password)
+        hashed_password=get_password_hash(user_data.password),
+        last_active_at=datetime.utcnow()
     )
     
     user_dict = user.dict()
@@ -34,7 +35,8 @@ async def register(user_data: UserCreate, db: AsyncIOMotorDatabase = Depends(get
     user_response = UserResponse(
         id=user.id,
         email=user.email,
-        created_at=user.created_at
+        created_at=user.created_at,
+        last_active_at=user.last_active_at
     )
     
     return Token(
@@ -60,6 +62,12 @@ async def login(credentials: UserLogin, db: AsyncIOMotorDatabase = Depends(get_d
             detail="Incorrect email or password"
         )
     
+    # Update last_active_at timestamp
+    await db.users.update_one(
+        {"id": user_data["id"]},
+        {"$set": {"last_active_at": datetime.utcnow()}}
+    )
+    
     # Create access token
     access_token = create_access_token(
         data={"sub": user_data["id"], "email": user_data["email"]}
@@ -68,7 +76,8 @@ async def login(credentials: UserLogin, db: AsyncIOMotorDatabase = Depends(get_d
     user_response = UserResponse(
         id=user_data["id"],
         email=user_data["email"],
-        created_at=user_data["created_at"]
+        created_at=user_data["created_at"],
+        last_active_at=datetime.utcnow()
     )
     
     return Token(
@@ -76,6 +85,18 @@ async def login(credentials: UserLogin, db: AsyncIOMotorDatabase = Depends(get_d
         token_type="bearer",
         user=user_response
     )
+
+@router.post("/update-activity")
+async def update_activity(
+    current_user: dict = Depends(__import__('middleware.auth', fromlist=['get_current_user']).get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Update user's last active timestamp when they open the app"""
+    await db.users.update_one(
+        {"id": current_user["sub"]},
+        {"$set": {"last_active_at": datetime.utcnow()}}
+    )
+    return {"status": "ok", "last_active_at": datetime.utcnow()}
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
@@ -89,5 +110,6 @@ async def get_current_user_info(
     return UserResponse(
         id=user_data["id"],
         email=user_data["email"],
-        created_at=user_data["created_at"]
+        created_at=user_data["created_at"],
+        last_active_at=user_data.get("last_active_at")
     )
