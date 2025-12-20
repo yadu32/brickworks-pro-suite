@@ -32,6 +32,7 @@ from routes import (
     factory_rate_router,
     other_expense_router,
     subscription_router,
+    admin_router,
 )
 from database import get_db_client
 
