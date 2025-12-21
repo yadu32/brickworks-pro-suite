@@ -82,3 +82,29 @@ async def delete_material_purchase(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     await db.material_purchases.delete_one({"id": purchase_id})
+
+@router.put("/{purchase_id}", response_model=MaterialPurchase)
+async def update_material_purchase(
+    purchase_id: str,
+    update_data: MaterialPurchaseUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    purchase = await db.material_purchases.find_one({"id": purchase_id})
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    
+    factory = await db.factories.find_one({"id": purchase["factory_id"], "owner_id": current_user["sub"]})
+    if not factory:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    update_dict = update_data.dict(exclude_unset=True)
+    update_dict["updated_at"] = datetime.utcnow()
+    
+    await db.material_purchases.update_one(
+        {"id": purchase_id},
+        {"$set": update_dict}
+    )
+    
+    updated_purchase = await db.material_purchases.find_one({"id": purchase_id})
+    return MaterialPurchase(**updated_purchase)
