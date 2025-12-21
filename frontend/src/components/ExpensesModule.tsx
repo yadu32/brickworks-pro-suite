@@ -382,12 +382,12 @@ const ExpensesModule = () => {
           </div>
         </section>
 
-        {/* Employee Summary Table */}
+        {/* Recent Transactions Table (Individual Payments) */}
         <Card className="card-dark">
           <CardHeader>
             <CardTitle className="text-foreground flex items-center">
               <CreditCard className="h-5 w-5 mr-2 text-success" />
-              Employee Summary
+              Recent Transactions
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -395,38 +395,44 @@ const ExpensesModule = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-border">
+                    <TableHead className="text-secondary">Date</TableHead>
                     <TableHead className="text-secondary">Employee</TableHead>
-                    <TableHead className="text-secondary text-right">Total Paid</TableHead>
-                    <TableHead className="text-secondary text-right">Payments</TableHead>
-                    <TableHead className="text-secondary text-right">Last Payment</TableHead>
+                    <TableHead className="text-secondary">Type</TableHead>
+                    <TableHead className="text-secondary text-right">Amount</TableHead>
+                    <TableHead className="text-secondary">Notes</TableHead>
                     <TableHead className="text-secondary text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {employees.length === 0 ? (
+                  {payments.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        No employee data available
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No payment transactions yet
                       </TableCell>
                     </TableRow>
                   ) : (
-                    employees.map((emp) => (
-                      <TableRow key={emp.employee_name} className="border-border">
-                        <TableCell className="text-foreground font-medium">{emp.employee_name}</TableCell>
-                        <TableCell className="text-right text-success font-semibold">
-                          {formatCurrency(emp.total_amount)}
+                    payments
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .map((payment) => (
+                      <TableRow key={payment.id} className="border-border">
+                        <TableCell className="text-muted-foreground">
+                          {new Date(payment.date).toLocaleDateString()}
                         </TableCell>
-                        <TableCell className="text-right text-foreground">{emp.payment_count}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {new Date(emp.latest_payment).toLocaleDateString()}
+                        <TableCell className="text-foreground font-medium">{payment.employee_name}</TableCell>
+                        <TableCell className="text-foreground capitalize">{payment.payment_type}</TableCell>
+                        <TableCell className="text-right text-success font-semibold">
+                          {formatCurrency(payment.amount)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
+                          {payment.notes || '-'}
                         </TableCell>
                         <TableCell className="text-center">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setDeleteEmployeeId(emp.employee_id)}
+                            onClick={() => setDeletePaymentId(payment.id)}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            disabled={!emp.employee_id}
+                            disabled={isReadOnly}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
