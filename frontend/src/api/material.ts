@@ -99,6 +99,11 @@ export const materialApi = {
     return response.data;
   },
 
+  updatePurchase: async (id: string, data: Partial<MaterialPurchase>): Promise<MaterialPurchase> => {
+    const response = await apiClient.put(`/material-purchases/${id}`, data);
+    return response.data;
+  },
+
   deletePurchase: async (id: string): Promise<void> => {
     await apiClient.delete(`/material-purchases/${id}`);
   },
