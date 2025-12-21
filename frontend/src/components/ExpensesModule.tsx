@@ -296,8 +296,9 @@ const ExpensesModule = () => {
   const deleteExpense = async (id: string) => {
     try {
       await expenseApi.deleteOtherExpense(id);
+      // Immediately update local state
+      setExpenses(prev => prev.filter(e => e.id !== id));
       toast({ title: 'Success', description: 'Expense deleted successfully' });
-      await loadExpenses();
     } catch (error: any) {
       console.error('Error deleting expense:', error);
       toast({ 
@@ -308,18 +309,18 @@ const ExpensesModule = () => {
     }
   };
 
-  // Delete Employee
-  const deleteEmployee = async (id: string) => {
+  // Delete Payment (individual transaction)
+  const deletePayment = async (id: string) => {
     try {
-      await employeeApi.delete(id);
-      toast({ title: 'Success', description: 'Employee deleted successfully' });
-      await loadEmployeeNames();
-      await loadPayments();
+      await employeeApi.deletePayment(id);
+      // Immediately update local state - remove the specific payment
+      setPayments(prev => prev.filter(p => p.id !== id));
+      toast({ title: 'Success', description: 'Payment deleted successfully' });
     } catch (error: any) {
-      console.error('Error deleting employee:', error);
+      console.error('Error deleting payment:', error);
       toast({ 
         title: 'Error', 
-        description: error.response?.data?.detail || 'Failed to delete employee', 
+        description: error.response?.data?.detail || 'Failed to delete payment', 
         variant: 'destructive' 
       });
     }
