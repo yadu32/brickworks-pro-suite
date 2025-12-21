@@ -430,21 +430,18 @@ const MaterialsModule = () => {
 
     const newPaymentMade = Number(selectedPurchase.payment_made) + paymentAmount;
     
-    const { error } = await supabase
-      .from('material_purchases')
-      .update({ payment_made: newPaymentMade })
-      .eq('id', selectedPurchase.id);
-    
-    if (error) {
-      toast({ title: 'Error recording payment', description: error.message, variant: 'destructive' });
-      return;
+    try {
+      await materialApi.updatePurchase(selectedPurchase.id, { payment_made: newPaymentMade });
+      
+      await loadPurchases();
+      setIsPayModalOpen(false);
+      setSelectedPurchase(null);
+      setPayAmount('');
+      toast({ title: 'Payment recorded successfully' });
+    } catch (error: any) {
+      console.error('Error recording payment:', error);
+      toast({ title: 'Error recording payment', description: error.response?.data?.detail || 'Failed to record payment', variant: 'destructive' });
     }
-    
-    await loadPurchases();
-    setIsPayModalOpen(false);
-    setSelectedPurchase(null);
-    setPayAmount('');
-    toast({ title: 'Payment recorded successfully' });
   };
 
   useEffect(() => {
