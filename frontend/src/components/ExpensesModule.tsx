@@ -25,14 +25,6 @@ interface EmployeePayment {
   notes: string;
 }
 
-interface EmployeeSummary {
-  employee_id: string;
-  employee_name: string;
-  total_amount: number;
-  payment_count: number;
-  latest_payment: string;
-}
-
 interface OtherExpense {
   id: string;
   date: string;
