@@ -728,21 +728,21 @@ const ExpensesModule = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Delete Employee Confirmation */}
-        <AlertDialog open={!!deleteEmployeeId} onOpenChange={() => setDeleteEmployeeId(null)}>
+        {/* Delete Payment Confirmation */}
+        <AlertDialog open={!!deletePaymentId} onOpenChange={() => setDeletePaymentId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Employee?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Payment?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete this employee record.
+                This action cannot be undone. This will permanently delete this payment transaction.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  if (deleteEmployeeId) deleteEmployee(deleteEmployeeId);
-                  setDeleteEmployeeId(null);
+                  if (deletePaymentId) deletePayment(deletePaymentId);
+                  setDeletePaymentId(null);
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
