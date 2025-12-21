@@ -40,11 +40,9 @@ interface OtherExpense {
 const ExpensesModule = () => {
   // Payment states
   const [payments, setPayments] = useState<EmployeePayment[]>([]);
-  const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [employeeOptions, setEmployeeOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [employeeList, setEmployeeList] = useState<Array<{ id: string; name: string }>>([]);
   
   // Expense states
   const [expenses, setExpenses] = useState<OtherExpense[]>([]);
