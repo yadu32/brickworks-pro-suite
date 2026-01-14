@@ -227,9 +227,9 @@ const ProductionModule = () => {
                     setFormData(prev => ({ ...prev, brick_type_id: value }))
                   }>
                     <SelectTrigger className="input-dark">
-                      <SelectValue />
+                      <SelectValue placeholder="Select brick type" />
                     </SelectTrigger>
-                    <SelectContent className="card-dark">
+                    <SelectContent className="bg-background border border-border z-50">
                       {brickTypes.map((type) => (
                         <SelectItem key={type.id} value={type.id}>
                           {type.type_name} ({type.standard_bricks_per_punch} per punch)

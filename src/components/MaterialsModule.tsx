@@ -407,7 +407,7 @@ const MaterialsModule = () => {
                         <SelectTrigger>
                           <SelectValue placeholder="Select material" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-background border border-border z-50">
                           {materials.map((material) => (
                             <SelectItem key={material.id} value={material.id}>
                               {material.material_name} ({material.unit})
@@ -531,7 +531,7 @@ const MaterialsModule = () => {
                         <SelectTrigger>
                           <SelectValue placeholder="Select material" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-background border border-border z-50">
                           {materials.map((material) => (
                             <SelectItem key={material.id} value={material.id}>
                               {material.material_name} ({material.unit})
@@ -765,8 +765,16 @@ const MaterialsModule = () => {
         open={isAddSupplierDialogOpen}
         onOpenChange={setIsAddSupplierDialogOpen}
         onSupplierAdded={(supplierName, supplierPhone) => {
-          setPurchaseForm({...purchaseForm, supplier_name: supplierName, supplier_phone: supplierPhone || ''});
-          loadSuppliers();
+          // Update form with new supplier data
+          setPurchaseForm(prev => ({...prev, supplier_name: supplierName, supplier_phone: supplierPhone || ''}));
+          // Add the new supplier to the options list immediately
+          setSupplierOptions(prev => {
+            const exists = prev.some(s => s.value === supplierName);
+            if (!exists) {
+              return [...prev, { value: supplierName, label: supplierName }];
+            }
+            return prev;
+          });
         }}
       />
     </div>

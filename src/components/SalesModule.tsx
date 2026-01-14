@@ -695,7 +695,7 @@ const SalesModule = () => {
                       <SelectTrigger>
                         <SelectValue placeholder="Select product type" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background border border-border z-50">
                         {productTypes.map((type) => (
                           <SelectItem key={type.id} value={type.id}>
                             {type.name}
@@ -705,26 +705,35 @@ const SalesModule = () => {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="customerName">Customer Name</Label>
-                    <Input
-                      id="customerName"
-                      value={saleForm.customer_name}
-                      onChange={(e) => setSaleForm({...saleForm, customer_name: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div>
+                <div>
+                  <Label htmlFor="customerName">Customer Name</Label>
+                  <SearchableSelect
+                    value={saleForm.customer_name}
+                    onValueChange={(value) => {
+                      const customer = customerOptions.find(c => c.value === value);
+                      setSaleForm({
+                        ...saleForm, 
+                        customer_name: value,
+                        customer_phone: customer?.phone || ''
+                      });
+                    }}
+                    options={customerOptions}
+                    placeholder="Select customer"
+                    searchPlaceholder="Search customers..."
+                    onAddNew={() => setIsAddCustomerOpen(true)}
+                    addNewLabel="Add Customer"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="customerPhone">Customer Phone</Label>
                   <Input
                     id="customerPhone"
                     value={saleForm.customer_phone}
                     onChange={(e) => setSaleForm({...saleForm, customer_phone: e.target.value})}
-                    readOnly={!!saleForm.customer_name}
-                    className={saleForm.customer_name ? "bg-muted" : ""}
+                    readOnly={!!saleForm.customer_name && customerOptions.some(c => c.value === saleForm.customer_name)}
+                    className={saleForm.customer_name && customerOptions.some(c => c.value === saleForm.customer_name) ? "bg-muted" : ""}
+                    placeholder="Enter phone number"
                   />
-                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -796,8 +805,16 @@ const SalesModule = () => {
           open={isAddCustomerOpen}
           onOpenChange={setIsAddCustomerOpen}
           onCustomerAdded={(name, phone) => {
-            setSaleForm({ ...saleForm, customer_name: name, customer_phone: phone });
-            // loadCustomers will be called automatically via useEffect when sales changes
+            // Update form with new customer data
+            setSaleForm(prev => ({ ...prev, customer_name: name, customer_phone: phone }));
+            // Add the new customer to the options list immediately
+            setCustomerOptions(prev => {
+              const exists = prev.some(c => c.value === name);
+              if (!exists) {
+                return [...prev, { value: name, label: name, phone: phone }];
+              }
+              return prev;
+            });
           }}
         />
       </div>
