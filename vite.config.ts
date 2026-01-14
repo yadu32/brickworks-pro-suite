@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'build'
     },
     server: {
-      port: 3000,
+      port: 8080,
       host: '0.0.0.0',
       allowedHosts: true
     },
