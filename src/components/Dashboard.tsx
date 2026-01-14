@@ -1,50 +1,19 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Package, Users, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon, Lock } from 'lucide-react';
+import { TrendingUp, Package, Users, IndianRupee, AlertTriangle, Factory, ShoppingCart, CreditCard, LucideIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import heroFactory from '@/assets/hero-factory.jpg';
 import { QuickEntryDialogs } from '@/components/QuickEntryDialogs';
-import { useAuth } from '@/contexts/AuthContext';
-import { factoryApi, productApi, productionApi, saleApi, materialApi, employeeApi } from '@/api';
-import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface QuickActionButtonProps {
   icon: LucideIcon;
   label: string;
   action: 'sale' | 'production' | 'usage' | 'payment';
   onClick: () => void;
-  disabled?: boolean;
 }
 
-interface ProductDefinition {
-  id: string;
-  name: string;
-  items_per_punch: number | null;
-}
-
-interface Material {
-  id: string;
-  material_name: string;
-  unit: string;
-  current_stock_qty: number;
-  average_cost_per_unit: number;
-}
-
-interface BrickStock {
-  id: string;
-  name: string;
-  stock: number;
-}
-
-const QuickActionButton = ({ icon: Icon, label, onClick, disabled }: QuickActionButtonProps) => {
+const QuickActionButton = ({ icon: Icon, label, onClick }: QuickActionButtonProps) => {
   return (
-    <button 
-      onClick={onClick} 
-      className={`card-dark p-4 text-center hover-scale relative ${disabled ? 'opacity-60' : ''}`}
-      disabled={disabled}
-    >
-      {disabled && (
-        <div className="absolute top-2 right-2">
-          <Lock className="h-4 w-4 text-muted-foreground" />
-        </div>
-      )}
+    <button onClick={onClick} className="card-dark p-4 text-center hover-scale">
       <Icon className="h-8 w-8 text-primary mx-auto mb-2" />
       <p className="text-sm font-medium text-foreground">{label}</p>
     </button>
@@ -53,91 +22,112 @@ const QuickActionButton = ({ icon: Icon, label, onClick, disabled }: QuickAction
 
 const Dashboard = () => {
   const [quickEntryType, setQuickEntryType] = useState<'sale' | 'production' | 'usage' | 'payment' | null>(null);
-  const [brickStocks, setBrickStocks] = useState<BrickStock[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [factoryId, setFactoryId] = useState<string | null>(null);
-  const [salesMetrics, setSalesMetrics] = useState({
-    monthlyRevenue: 0,
-    outstandingReceivables: 0
+  const [dashboardData, setDashboardData] = useState({
+    todayProduction: { fourInch: 0, sixInch: 0 },
+    monthlyProduction: { fourInch: 0, sixInch: 0 },
+    currentStock: { fourInch: 0, sixInch: 0 },
+    salesMetrics: { todayRevenue: 0, monthlyRevenue: 0, outstandingReceivables: 0 },
+    materialStock: {
+      cement: { quantity: 0, unit: 'bags', value: 0 },
+      dust: { quantity: 0, unit: 'tons', value: 0 },
+      diesel: { quantity: 0, unit: 'liters', value: 0 },
+    },
+    recentPayments: { todayTotal: 0, weeklyTotal: 0 },
   });
-  const [weeklyPayments, setWeeklyPayments] = useState(0);
-
-  const { user } = useAuth();
-  const { guardAction, isReadOnly } = useSubscriptionGuard();
-
-  const handleQuickAction = (action: 'sale' | 'production' | 'usage' | 'payment') => {
-    guardAction(() => setQuickEntryType(action));
-  };
-
-  const loadFactory = async () => {
-    if (!user) return;
-
-    try {
-      const factories = await factoryApi.getAll();
-      if (factories.length > 0) {
-        setFactoryId(factories[0].id);
-      }
-    } catch (error) {
-      console.error('Error loading factory:', error);
-    }
-  };
 
   const loadDashboardData = async () => {
-    if (!factoryId) return;
-    
     try {
+      const today = new Date().toISOString().split('T')[0];
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Get all product definitions (brick types) for this factory
-      const products = await productApi.getByFactory(factoryId);
+      // Get brick types
+      const { data: brickTypes } = await supabase.from('brick_types').select('*');
+      const fourInchType = brickTypes?.find(bt => bt.type_name.includes('4-inch'));
+      const sixInchType = brickTypes?.find(bt => bt.type_name.includes('6-inch'));
 
-      // Get all production for this factory
-      const allProd = await productionApi.getByFactory(factoryId);
+      // Today's production
+      const { data: todayProd } = await supabase
+        .from('bricks_production')
+        .select('*, brick_types(*)')
+        .eq('date', today);
 
-      // Get all sales for this factory
-      const allSales = await saleApi.getByFactory(factoryId);
+      const todayFourInch = todayProd?.filter(p => p.brick_type_id === fourInchType?.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
+      const todaySixInch = todayProd?.filter(p => p.brick_type_id === sixInchType?.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
 
-      // Calculate stock for each product type
-      const stocks: BrickStock[] = (products || []).map(p => {
-        const produced = allProd?.filter(prod => prod.product_id === p.id).reduce((sum, prod) => sum + prod.quantity, 0) || 0;
-        const sold = allSales?.filter(s => s.product_id === p.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
-        return {
-          id: p.id,
-          name: p.name,
-          stock: produced - sold
-        };
-      });
-      setBrickStocks(stocks);
+      // Monthly production
+      const { data: monthlyProd } = await supabase
+        .from('bricks_production')
+        .select('*, brick_types(*)')
+        .gte('date', startOfMonth);
+
+      const monthlyFourInch = monthlyProd?.filter(p => p.brick_type_id === fourInchType?.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
+      const monthlySixInch = monthlyProd?.filter(p => p.brick_type_id === sixInchType?.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
+
+      // Total production for stock calculation
+      const { data: allProd } = await supabase.from('bricks_production').select('*, brick_types(*)');
+      const totalFourInchProd = allProd?.filter(p => p.brick_type_id === fourInchType?.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
+      const totalSixInchProd = allProd?.filter(p => p.brick_type_id === sixInchType?.id).reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0;
+
+      // Total sales for stock calculation
+      const { data: allSales } = await supabase.from('sales').select('*');
+      const totalFourInchSold = allSales?.filter(s => s.product_id === fourInchType?.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
+      const totalSixInchSold = allSales?.filter(s => s.product_id === sixInchType?.id).reduce((sum, s) => sum + s.quantity_sold, 0) || 0;
 
       // Sales metrics
-      const monthlySales = await saleApi.getByFactory(factoryId, startOfMonth);
-      const monthlyRevenue = monthlySales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
-      const outstandingReceivables = allSales?.reduce((sum, s) => sum + s.balance_due, 0) || 0;
-      setSalesMetrics({ monthlyRevenue, outstandingReceivables });
+      const { data: todaySales } = await supabase.from('sales').select('*').eq('date', today);
+      const { data: monthlySales } = await supabase.from('sales').select('*').gte('date', startOfMonth);
+      const { data: allSalesForBalance } = await supabase.from('sales').select('*');
 
-      // Materials - load all for this factory
-      const materialsData = await materialApi.getByFactory(factoryId);
-      setMaterials(materialsData || []);
+      const todayRevenue = todaySales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
+      const monthlyRevenue = monthlySales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
+      const outstandingReceivables = allSalesForBalance?.reduce((sum, s) => sum + s.balance_due, 0) || 0;
+
+      // Materials
+      const { data: materials } = await supabase.from('materials').select('*');
 
       // Employee payments
-      const weeklyPaymentsData = await employeeApi.getPayments(factoryId, weekAgo);
-      const weeklyTotal = weeklyPaymentsData?.reduce((sum, p) => sum + p.amount, 0) || 0;
-      setWeeklyPayments(weeklyTotal);
+      const { data: todayPayments } = await supabase.from('employee_payments').select('*').eq('date', today);
+      const { data: weeklyPayments } = await supabase.from('employee_payments').select('*').gte('date', weekAgo);
+
+      const todayTotal = todayPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+      const weeklyTotal = weeklyPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+
+      setDashboardData({
+        todayProduction: { fourInch: todayFourInch, sixInch: todaySixInch },
+        monthlyProduction: { fourInch: monthlyFourInch, sixInch: monthlySixInch },
+        currentStock: { 
+          fourInch: totalFourInchProd - totalFourInchSold, 
+          sixInch: totalSixInchProd - totalSixInchSold 
+        },
+        salesMetrics: { todayRevenue, monthlyRevenue, outstandingReceivables },
+        materialStock: {
+          cement: { 
+            quantity: materials?.find(m => m.material_name === 'Cement')?.current_stock_qty || 0, 
+            unit: 'bags', 
+            value: (materials?.find(m => m.material_name === 'Cement')?.current_stock_qty || 0) * (materials?.find(m => m.material_name === 'Cement')?.average_cost_per_unit || 0)
+          },
+          dust: { 
+            quantity: materials?.find(m => m.material_name === 'Dust')?.current_stock_qty || 0, 
+            unit: 'tons', 
+            value: (materials?.find(m => m.material_name === 'Dust')?.current_stock_qty || 0) * (materials?.find(m => m.material_name === 'Dust')?.average_cost_per_unit || 0)
+          },
+          diesel: { 
+            quantity: materials?.find(m => m.material_name === 'Diesel')?.current_stock_qty || 0, 
+            unit: 'liters', 
+            value: (materials?.find(m => m.material_name === 'Diesel')?.current_stock_qty || 0) * (materials?.find(m => m.material_name === 'Diesel')?.average_cost_per_unit || 0)
+          },
+        },
+        recentPayments: { todayTotal, weeklyTotal },
+      });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
   };
 
   useEffect(() => {
-    loadFactory();
+    loadDashboardData();
   }, []);
-
-  useEffect(() => {
-    if (factoryId) {
-      loadDashboardData();
-    }
-  }, [factoryId]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -147,35 +137,21 @@ const Dashboard = () => {
     }).format(amount);
   };
 
-  const handleOutstandingClick = () => {
-    window.dispatchEvent(new CustomEvent('changeTab', { 
-      detail: { tab: 'sales', showDuesOnly: true } 
-    }));
-  };
-
-  // Calculate total material value
-  const totalMaterialValue = materials.reduce((sum, m) => sum + (m.current_stock_qty * m.average_cost_per_unit), 0);
-
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-6 space-y-8">
-        {/* Trial Expired Banner */}
-        {isReadOnly && (
-          <div className="bg-destructive/20 border border-destructive/30 rounded-lg p-4 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <p className="text-destructive-foreground font-medium">
-                Your free trial has ended — Upgrade to continue adding new entries.
-              </p>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('changeTab', { detail: 'subscription' }))}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 transition-colors"
-              >
-                Upgrade Now
-              </button>
-            </div>
-          </div>
-        )}
+      {/* Hero Section */}
+      {/* Hero Section */}
+      <div 
+        className="relative h-64 bg-cover bg-center flex items-center justify-center"
+        style={{ backgroundImage: `url(${heroFactory})` }}
+      >
+        <div className="absolute inset-0 bg-background/80"></div>
+        <div className="relative text-center z-10">
+          <h1 className="text-4xl font-bold text-foreground mb-2">BrickWorks Manager</h1>
+        </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
         {/* Sales Summary */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
@@ -184,7 +160,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-secondary">Monthly Total Sales</p>
-                  <p className="text-metric text-success">{formatCurrency(salesMetrics.monthlyRevenue)}</p>
+                  <p className="text-metric text-success">{formatCurrency(dashboardData.salesMetrics.monthlyRevenue)}</p>
                 </div>
                 <TrendingUp className="h-12 w-12 text-success" />
               </div>
@@ -192,12 +168,14 @@ const Dashboard = () => {
             
             <div 
               className="card-metric cursor-pointer hover:ring-2 hover:ring-warning transition-all"
-              onClick={handleOutstandingClick}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('changeTab', { detail: 'sales' }));
+              }}
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-secondary">Outstanding (Click to view)</p>
-                  <p className="text-metric text-warning">{formatCurrency(salesMetrics.outstandingReceivables)}</p>
+                  <p className="text-metric text-warning">{formatCurrency(dashboardData.salesMetrics.outstandingReceivables)}</p>
                 </div>
                 <AlertTriangle className="h-12 w-12 text-warning" />
               </div>
@@ -205,56 +183,56 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Production Overview - Consolidated */}
+        {/* Production & Inventory */}
         <section className="animate-slide-up">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Production Overview</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Production & Inventory</h2>
           <div className="card-metric">
-            {brickStocks.length === 0 ? (
-              <div className="text-center text-muted-foreground py-4">
-                No brick types defined. Add brick types in Settings.
+            <div className="grid grid-cols-2 gap-6">
+              <div className="text-center">
+                <Package className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-secondary">4-inch Stock</p>
+                <p className="text-2xl font-bold text-foreground">{dashboardData.currentStock.fourInch.toLocaleString()}</p>
               </div>
-            ) : (
-              <div className={`grid gap-6 ${brickStocks.length > 2 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2'}`}>
-                {brickStocks.map((brick) => (
-                  <div key={brick.id} className="text-center">
-                    <Package className="h-8 w-8 text-warning mx-auto mb-2" />
-                    <p className="text-secondary">{brick.name}</p>
-                    <p className="text-2xl font-bold text-foreground">{brick.stock.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">In Stock</p>
-                  </div>
-                ))}
+              
+              <div className="text-center">
+                <Package className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-secondary">6-inch Stock</p>
+                <p className="text-2xl font-bold text-foreground">{dashboardData.currentStock.sixInch.toLocaleString()}</p>
               </div>
-            )}
+            </div>
           </div>
         </section>
 
-        {/* Material Stock Overview - Consolidated */}
+        {/* Material Stock Values */}
         <section className="animate-slide-up">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Material Stock Overview</h2>
-          <div className="card-metric">
-            {materials.length === 0 ? (
-              <div className="text-center text-muted-foreground py-4">
-                No materials defined. Add materials in Settings.
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Material Inventory</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="card-metric">
+              <div className="text-center">
+                <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-secondary">Cement</p>
+                <p className="text-xl font-bold text-foreground">{dashboardData.materialStock.cement.quantity} {dashboardData.materialStock.cement.unit}</p>
+                <p className="text-secondary">{formatCurrency(dashboardData.materialStock.cement.value)}</p>
               </div>
-            ) : (
-              <>
-                <div className={`grid gap-6 ${materials.length > 3 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
-                  {materials.map((material) => (
-                    <div key={material.id} className="text-center">
-                      <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-                      <p className="text-secondary">{material.material_name}</p>
-                      <p className="text-xl font-bold text-foreground">
-                        {material.current_stock_qty} {material.unit}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 pt-4 border-t border-border text-center">
-                  <p className="text-secondary">Total Stock Value</p>
-                  <p className="text-xl font-bold text-primary">{formatCurrency(totalMaterialValue)}</p>
-                </div>
-              </>
-            )}
+            </div>
+            
+            <div className="card-metric">
+              <div className="text-center">
+                <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-secondary">Dust</p>
+                <p className="text-xl font-bold text-foreground">{dashboardData.materialStock.dust.quantity} {dashboardData.materialStock.dust.unit}</p>
+                <p className="text-secondary">{formatCurrency(dashboardData.materialStock.dust.value)}</p>
+              </div>
+            </div>
+            
+            <div className="card-metric">
+              <div className="text-center">
+                <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-secondary">Diesel</p>
+                <p className="text-xl font-bold text-foreground">{dashboardData.materialStock.diesel.quantity} {dashboardData.materialStock.diesel.unit}</p>
+                <p className="text-secondary">{formatCurrency(dashboardData.materialStock.diesel.value)}</p>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -266,7 +244,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-secondary">Weekly Payments</p>
-                  <p className="text-metric text-warning">{formatCurrency(weeklyPayments)}</p>
+                  <p className="text-metric text-warning">{formatCurrency(dashboardData.recentPayments.weeklyTotal)}</p>
                 </div>
                 <Users className="h-12 w-12 text-warning" />
               </div>
@@ -276,39 +254,12 @@ const Dashboard = () => {
 
         {/* New Entry */}
         <section className="animate-scale-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">
-            New Entry
-            {isReadOnly && <span className="text-sm font-normal text-muted-foreground ml-2">(Upgrade to unlock)</span>}
-          </h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">New Entry</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <QuickActionButton 
-              icon={Factory} 
-              label="Production" 
-              action="production" 
-              onClick={() => handleQuickAction('production')} 
-              disabled={isReadOnly}
-            />
-            <QuickActionButton 
-              icon={ShoppingCart} 
-              label="Sale" 
-              action="sale" 
-              onClick={() => handleQuickAction('sale')} 
-              disabled={isReadOnly}
-            />
-            <QuickActionButton 
-              icon={Package} 
-              label="Material" 
-              action="usage" 
-              onClick={() => handleQuickAction('usage')} 
-              disabled={isReadOnly}
-            />
-            <QuickActionButton 
-              icon={CreditCard} 
-              label="Payment" 
-              action="payment" 
-              onClick={() => handleQuickAction('payment')} 
-              disabled={isReadOnly}
-            />
+            <QuickActionButton icon={Factory} label="Production" action="production" onClick={() => setQuickEntryType('production')} />
+            <QuickActionButton icon={ShoppingCart} label="Sale" action="sale" onClick={() => setQuickEntryType('sale')} />
+            <QuickActionButton icon={Package} label="Material" action="usage" onClick={() => setQuickEntryType('usage')} />
+            <QuickActionButton icon={CreditCard} label="Payment" action="payment" onClick={() => setQuickEntryType('payment')} />
           </div>
         </section>
       </div>

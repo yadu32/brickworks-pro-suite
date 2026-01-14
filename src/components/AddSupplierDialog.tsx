@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useFactory } from '@/hooks/useFactory';
-import { supplierApi } from '@/api';
 
 interface AddSupplierDialogProps {
   open: boolean;
@@ -15,7 +13,6 @@ interface AddSupplierDialogProps {
 
 export function AddSupplierDialog({ open, onOpenChange, onSupplierAdded }: AddSupplierDialogProps) {
   const { toast } = useToast();
-  const { factoryId } = useFactory();
   const [formData, setFormData] = useState({
     supplier_name: '',
     supplier_phone: ''
@@ -24,29 +21,15 @@ export function AddSupplierDialog({ open, onOpenChange, onSupplierAdded }: AddSu
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.supplier_name || !factoryId) {
+    if (!formData.supplier_name) {
       toast({ title: 'Error', description: 'Supplier name is required', variant: 'destructive' });
       return;
     }
 
-    try {
-      await supplierApi.create({
-        factory_id: factoryId,
-        name: formData.supplier_name,
-        contact_number: formData.supplier_phone || undefined
-      });
-
-      toast({ title: 'Success', description: 'Supplier saved' });
-      onSupplierAdded(formData.supplier_name, formData.supplier_phone);
-      setFormData({ supplier_name: '', supplier_phone: '' });
-      onOpenChange(false);
-    } catch (error: any) {
-      toast({ 
-        title: 'Error', 
-        description: error.response?.data?.detail || 'Failed to add supplier', 
-        variant: 'destructive' 
-      });
-    }
+    toast({ title: 'Success', description: 'Supplier saved' });
+    onSupplierAdded(formData.supplier_name, formData.supplier_phone);
+    setFormData({ supplier_name: '', supplier_phone: '' });
+    onOpenChange(false);
   };
 
   return (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Mail, Search, X, DollarSign, Lock, UserPlus } from 'lucide-react';
+import { ShoppingCart, Plus, Edit, Trash2, Phone, User, IndianRupee, Calendar, TrendingUp, Download, Mail, Search, X, DollarSign } from 'lucide-react';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { generateInvoicePDF, shareViaWhatsApp, shareViaEmail, downloadPDF } from '@/utils/invoiceGenerator';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddCustomerDialog } from '@/components/AddCustomerDialog';
-import { useFactory } from '@/hooks/useFactory';
-import { saleApi, customerApi, productApi } from '@/api';
-import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface ProductType {
   id: string;
@@ -47,11 +45,7 @@ interface CustomerSummary {
   last_transaction_date: string;
 }
 
-interface SalesModuleProps {
-  initialShowDuesOnly?: boolean;
-}
-
-const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
+const SalesModule = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
@@ -60,39 +54,17 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [customerSales, setCustomerSales] = useState<Sale[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showDuesOnly, setShowDuesOnly] = useState(initialShowDuesOnly);
+  const [showDuesOnly, setShowDuesOnly] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentCustomer, setPaymentCustomer] = useState<CustomerSummary | null>(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [customerOptions, setCustomerOptions] = useState<Array<{ value: string; label: string; phone: string }>>([]);
-  const [factoryId, setFactoryId] = useState<string | null>(null);
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     date: new Date().toISOString().split('T')[0],
     notes: ''
   });
   const { toast } = useToast();
-  const { factoryId: hookFactoryId } = useFactory();
-  const { guardAction, isReadOnly } = useSubscriptionGuard();
-
-  useEffect(() => {
-    if (hookFactoryId) {
-      setFactoryId(hookFactoryId);
-    }
-  }, [hookFactoryId]);
-
-  const handleAddClick = () => {
-    guardAction(() => setIsDialogOpen(true));
-  };
-
-  // Update showDuesOnly when initialShowDuesOnly prop changes
-  useEffect(() => {
-    setShowDuesOnly(initialShowDuesOnly);
-  }, [initialShowDuesOnly]);
-
-  const loadFactoryId = async () => {
-    // Factory ID is loaded via useFactory hook
-  };
 
   const [saleForm, setSaleForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -114,37 +86,36 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   };
 
   const loadProductTypes = async () => {
-    if (!factoryId) return;
+    const { data, error } = await supabase
+      .from('product_definitions')
+      .select('*')
+      .order('name');
     
-    try {
-      const data = await productApi.getByFactory(factoryId);
+    if (error) {
+      toast({ title: 'Error loading product types', description: error.message, variant: 'destructive' });
+    } else {
       setProductTypes(data || []);
-    } catch (error: any) {
-      toast({ title: 'Error loading product types', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
   };
 
   const loadSales = async () => {
-    if (!factoryId) return;
+    const { data, error } = await supabase
+      .from('sales')
+      .select(`
+        *,
+        product_definitions (
+          id,
+          name,
+          unit
+        )
+      `)
+      .order('date', { ascending: false });
     
-    try {
-      const salesData = await saleApi.getByFactory(factoryId);
-      const products = await productApi.getByFactory(factoryId);
-      
-      // Enrich sales with product details
-      const enrichedSales = salesData.map(sale => ({
-        ...sale,
-        product_definitions: products.find(p => p.id === sale.product_id) || {
-          id: sale.product_id,
-          name: 'Unknown',
-          unit: 'pieces'
-        }
-      }));
-      
-      setSales(enrichedSales as unknown as Sale[]);
-      calculateCustomerSummaries(enrichedSales as unknown as Sale[]);
-    } catch (error: any) {
-      toast({ title: 'Error loading sales', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
+    if (error) {
+      toast({ title: 'Error loading sales', description: error.message, variant: 'destructive' });
+    } else {
+      setSales(data as unknown as Sale[] || []);
+      calculateCustomerSummaries(data as unknown as Sale[] || []);
     }
   };
 
@@ -180,176 +151,191 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     setCustomers(Array.from(customerMap.values()).sort((a, b) => b.total_sales - a.total_sales));
   };
 
-  const loadCustomers = async () => {
-    if (!factoryId) return;
+  const loadCustomers = () => {
+    // Build customer options from existing sales data
+    const uniqueCustomers = new Map<string, { name: string; phone: string }>();
+    sales.forEach(sale => {
+      if (!uniqueCustomers.has(sale.customer_name)) {
+        uniqueCustomers.set(sale.customer_name, {
+          name: sale.customer_name,
+          phone: sale.customer_phone || ''
+        });
+      }
+    });
     
-    try {
-      // Fetch customers from the customers table
-      const customersData = await customerApi.getByFactory(factoryId);
-      
-      const options = customersData.map(c => ({
-        value: c.name,
-        label: c.name,
-        phone: c.phone || ''
-      }));
-      
-      setCustomerOptions(options);
-    } catch (error: any) {
-      console.error('Error loading customers:', error);
-      // Fallback to building from sales if customers API fails
-      const uniqueCustomers = new Map<string, { name: string; phone: string }>();
-      sales.forEach(sale => {
-        if (!uniqueCustomers.has(sale.customer_name)) {
-          uniqueCustomers.set(sale.customer_name, {
-            name: sale.customer_name,
-            phone: sale.customer_phone || ''
-          });
-        }
-      });
-      
-      const options = Array.from(uniqueCustomers.values()).map(c => ({
-        value: c.name,
-        label: c.name,
-        phone: c.phone
-      }));
-      
-      setCustomerOptions(options);
-    }
+    const options = Array.from(uniqueCustomers.values()).map(c => ({
+      value: c.name,
+      label: c.name,
+      phone: c.phone
+    }));
+    
+    setCustomerOptions(options);
   };
 
   const loadCustomerSales = async (customerName: string) => {
-    if (!factoryId) return;
+    const { data, error } = await supabase
+      .from('sales')
+      .select(`
+        *,
+        product_definitions (
+          id,
+          name,
+          unit
+        )
+      `)
+      .eq('customer_name', customerName)
+      .order('date', { ascending: true });
     
-    try {
-      const salesData = await saleApi.getByFactory(factoryId);
-      const products = await productApi.getByFactory(factoryId);
-      
-      const filtered = salesData
-        .filter(s => s.customer_name === customerName)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      
-      const enriched = filtered.map(sale => ({
-        ...sale,
-        product_definitions: products.find(p => p.id === sale.product_id) || {
-          id: sale.product_id,
-          name: 'Unknown',
-          unit: 'pieces'
-        }
-      }));
-      
-      setCustomerSales(enriched as unknown as Sale[]);
-    } catch (error: any) {
-      toast({ title: 'Error loading customer sales', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
+    if (error) {
+      toast({ title: 'Error loading customer sales', description: error.message, variant: 'destructive' });
+    } else {
+      setCustomerSales(data as unknown as Sale[] || []);
     }
   };
 
   const applyFIFOPayments = async (customerName: string, paymentAmount: number, newSaleId?: string) => {
-    if (!factoryId) return paymentAmount;
-    
-    try {
-      // Get all unpaid sales for this customer, ordered by date (oldest first)
-      const allSales = await saleApi.getByFactory(factoryId);
-      const unpaidSales = allSales
-        .filter(s => s.customer_name === customerName && s.balance_due > 0 && s.id !== newSaleId)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Get all unpaid sales for this customer, ordered by date (oldest first)
+    const { data: unpaidSales, error } = await supabase
+      .from('sales')
+      .select('*')
+      .eq('customer_name', customerName)
+      .gt('balance_due', 0)
+      .order('date', { ascending: true });
 
-      let remainingPayment = paymentAmount;
-
-      // Apply payment to oldest unpaid sales first
-      for (const sale of unpaidSales) {
-        if (remainingPayment <= 0) break;
-        
-        const amountToApply = Math.min(remainingPayment, sale.balance_due);
-        
-        try {
-          await saleApi.receivePayment(sale.id, amountToApply);
-          remainingPayment -= amountToApply;
-        } catch (error) {
-          console.error('Error updating sale payment:', error);
-        }
-      }
-
-      return remainingPayment;
-    } catch (error) {
-      console.error('Error in applyFIFOPayments:', error);
-      toast({ title: 'Error', description: 'Failed to process payment', variant: 'destructive' });
+    if (error) {
+      console.error('Error fetching unpaid sales:', error);
       return paymentAmount;
     }
+
+    let remainingPayment = paymentAmount;
+    const updatedSales: any[] = [];
+
+    // Apply payment to oldest unpaid sales first
+    for (const sale of unpaidSales || []) {
+      if (remainingPayment <= 0) break;
+      
+      // Skip the new sale we just created to avoid double-applying payment
+      if (sale.id === newSaleId) continue;
+
+      const amountToApply = Math.min(remainingPayment, sale.balance_due);
+      const newAmountReceived = sale.amount_received + amountToApply;
+      const newBalanceDue = sale.balance_due - amountToApply;
+
+      updatedSales.push({
+        id: sale.id,
+        amount_received: newAmountReceived,
+        balance_due: newBalanceDue
+      });
+
+      remainingPayment -= amountToApply;
+    }
+
+    // Update all affected sales
+    for (const updatedSale of updatedSales) {
+      await supabase
+        .from('sales')
+        .update({
+          amount_received: updatedSale.amount_received,
+          balance_due: updatedSale.balance_due
+        })
+        .eq('id', updatedSale.id);
+    }
+
+    return remainingPayment;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('=== SALE FORM SUBMIT ===');
-    console.log('saleForm:', saleForm);
-    console.log('product_id:', saleForm.product_id);
-    console.log('productTypes list:', productTypes);
-    
-    if (!factoryId) {
-      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
-      return;
-    }
-    
-    // CRITICAL VALIDATION: Ensure product_id is not empty
-    if (!saleForm.product_id || saleForm.product_id.trim() === '') {
-      console.error('VALIDATION FAILED: No product selected');
-      toast({ title: 'Error', description: 'Please select a product type from the dropdown', variant: 'destructive' });
-      return;
-    }
-    
-    if (!saleForm.customer_name || saleForm.customer_name.trim() === '') {
-      console.error('VALIDATION FAILED: No customer name');
-      toast({ title: 'Error', description: 'Please enter customer name', variant: 'destructive' });
-      return;
-    }
-    
     const totalAmount = Number(saleForm.quantity_sold) * Number(saleForm.rate_per_brick);
-    const amountReceived = Number(saleForm.amount_received) || 0;
-    const balanceDue = totalAmount - amountReceived;
+    const amountReceived = Number(saleForm.amount_received);
     
-    const saleData = {
-      date: saleForm.date,
-      customer_name: saleForm.customer_name,
-      customer_phone: saleForm.customer_phone || undefined,
-      product_id: saleForm.product_id,
-      quantity_sold: Number(saleForm.quantity_sold),
-      rate_per_brick: Number(saleForm.rate_per_brick),
-      total_amount: totalAmount,
-      amount_received: amountReceived,
-      balance_due: balanceDue,
-      notes: saleForm.notes,
-      factory_id: factoryId
-    };
+    if (editingSale) {
+      // For editing, just update the record without FIFO logic
+      const balanceDue = totalAmount - amountReceived;
+      const saleData = {
+        date: saleForm.date,
+        customer_name: saleForm.customer_name,
+        customer_phone: saleForm.customer_phone,
+        product_id: saleForm.product_id,
+        quantity_sold: Number(saleForm.quantity_sold),
+        rate_per_brick: Number(saleForm.rate_per_brick),
+        total_amount: totalAmount,
+        amount_received: amountReceived,
+        balance_due: balanceDue,
+        notes: saleForm.notes
+      };
 
-    try {
-      if (editingSale) {
-        await saleApi.update(editingSale.id, saleData);
-        toast({ title: 'Sale updated successfully' });
-      } else {
-        await saleApi.create(saleData);
-        toast({ title: 'Sale added successfully' });
+      const { error } = await supabase
+        .from('sales')
+        .update(saleData)
+        .eq('id', editingSale.id);
+      
+      if (error) {
+        toast({ title: 'Error updating sale', description: error.message, variant: 'destructive' });
+        return;
+      }
+    } else {
+      // For new sales, implement FIFO payment logic
+      
+      // First, create the sale with full balance due (we'll adjust after FIFO)
+      const initialSaleData = {
+        date: saleForm.date,
+        customer_name: saleForm.customer_name,
+        customer_phone: saleForm.customer_phone,
+        product_id: saleForm.product_id,
+        quantity_sold: Number(saleForm.quantity_sold),
+        rate_per_brick: Number(saleForm.rate_per_brick),
+        total_amount: totalAmount,
+        amount_received: 0, // Start with 0, will be updated by FIFO
+        balance_due: totalAmount, // Start with full amount
+        notes: saleForm.notes
+      };
+
+      const { data: newSale, error: insertError } = await supabase
+        .from('sales')
+        .insert([initialSaleData])
+        .select()
+        .single();
+      
+      if (insertError) {
+        toast({ title: 'Error adding sale', description: insertError.message, variant: 'destructive' });
+        return;
       }
 
-      await loadSales();
-      setIsDialogOpen(false);
-      setEditingSale(null);
-      setSaleForm({
-        date: new Date().toISOString().split('T')[0],
-        customer_name: '',
-        customer_phone: '',
-        product_id: '',
-        quantity_sold: '',
-        rate_per_brick: '',
-        amount_received: '',
-        notes: ''
-      });
-    } catch (error: any) {
-      toast({ 
-        title: 'Error', 
-        description: error.response?.data?.detail || 'Failed to save sale', 
-        variant: 'destructive' 
-      });
+      // Apply FIFO payment logic if there's a payment
+      if (amountReceived > 0) {
+        const remainingPayment = await applyFIFOPayments(saleForm.customer_name, amountReceived, newSale.id);
+        
+        // Apply any remaining payment to the new sale
+        if (remainingPayment > 0) {
+          const newSalePayment = Math.min(remainingPayment, totalAmount);
+          await supabase
+            .from('sales')
+            .update({
+              amount_received: newSalePayment,
+              balance_due: totalAmount - newSalePayment
+            })
+            .eq('id', newSale.id);
+        }
+      }
     }
+
+    await loadSales();
+    setIsDialogOpen(false);
+    setEditingSale(null);
+    setSaleForm({
+      date: new Date().toISOString().split('T')[0],
+      customer_name: '',
+      customer_phone: '',
+      product_id: '',
+      quantity_sold: '',
+      rate_per_brick: '',
+      amount_received: '',
+      notes: ''
+    });
+    
+    toast({ title: editingSale ? 'Sale updated successfully' : 'Sale added successfully' });
   };
 
   const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
@@ -358,16 +344,16 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   });
 
   const deleteSale = async (id: string) => {
-    try {
-      await saleApi.delete(id);
+    const { error } = await supabase
+      .from('sales')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      toast({ title: 'Error deleting sale', description: error.message, variant: 'destructive' });
+    } else {
       await loadSales();
       toast({ title: 'Sale deleted successfully' });
-    } catch (error: any) {
-      toast({ 
-        title: 'Error deleting sale', 
-        description: error.response?.data?.detail || 'Failed to delete', 
-        variant: 'destructive' 
-      });
     }
     setDeleteDialogState({open: false, id: ''});
   };
@@ -488,26 +474,13 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
   };
 
   useEffect(() => {
-    loadFactoryId();
+    loadProductTypes();
+    loadSales();
   }, []);
-
-  useEffect(() => {
-    if (factoryId) {
-      loadProductTypes();
-      loadSales();
-    }
-  }, [factoryId]);
 
   useEffect(() => {
     loadCustomers();
   }, [sales]);
-
-  // ROBUST FIX: Auto-select first product when data loads
-  useEffect(() => {
-    if (productTypes.length > 0 && !saleForm.product_id && !editingSale) {
-      setSaleForm(prev => ({ ...prev, product_id: productTypes[0].id }));
-    }
-  }, [productTypes, editingSale]);
 
   if (selectedCustomer) {
     const customer = customers.find(c => c.customer_name === selectedCustomer);
@@ -689,16 +662,15 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
     <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
-          <div className="flex justify-between items-center flex-wrap gap-3">
+          <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-foreground">Sales Management</h1>
-            <div className="flex gap-2">
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="btn-primary">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Sale
-                  </Button>
-                </DialogTrigger>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="btn-primary">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Sale
+              </Button>
+            </DialogTrigger>
             <DialogContent className="modal-content max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-foreground">
@@ -735,32 +707,12 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <Label htmlFor="customerName">Customer Name</Label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsAddCustomerOpen(true)}
-                        className="h-7 text-xs"
-                      >
-                        <UserPlus className="h-3 w-3 mr-1" />
-                        Add New
-                      </Button>
-                    </div>
-                    <SearchableSelect
-                      options={customerOptions}
+                    <Label htmlFor="customerName">Customer Name</Label>
+                    <Input
+                      id="customerName"
                       value={saleForm.customer_name}
-                      onValueChange={(value) => {
-                        const selectedCustomer = customerOptions.find(c => c.value === value);
-                        setSaleForm({
-                          ...saleForm, 
-                          customer_name: value,
-                          customer_phone: selectedCustomer?.phone || ''
-                        });
-                      }}
-                      placeholder="Select or type customer name..."
-                      searchPlaceholder="Search customers..."
+                      onChange={(e) => setSaleForm({...saleForm, customer_name: e.target.value})}
+                      required
                     />
                   </div>
                   <div>
@@ -838,36 +790,39 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
-            </div>
+        </Dialog>
 
         <AddCustomerDialog
           open={isAddCustomerOpen}
           onOpenChange={setIsAddCustomerOpen}
           onCustomerAdded={(name, phone) => {
             setSaleForm({ ...saleForm, customer_name: name, customer_phone: phone });
-            loadCustomers(); // Reload customer list
+            // loadCustomers will be called automatically via useEffect when sales changes
           }}
         />
       </div>
 
-        {/* Overall Summary - Consolidated */}
+        {/* Overall Summary */}
         <section className="animate-fade-in">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Sales Summary</h2>
-          <div className="card-metric">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Overall Summary</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="card-metric">
               <div className="text-center">
                 <ShoppingCart className="h-8 w-8 text-primary mx-auto mb-2" />
                 <p className="text-secondary">Total Sales</p>
                 <p className="text-2xl font-bold text-foreground">{sales.length}</p>
               </div>
+            </div>
+            <div className="card-metric">
               <div className="text-center">
                 <IndianRupee className="h-8 w-8 text-success mx-auto mb-2" />
-                <p className="text-secondary">Revenue</p>
+                <p className="text-secondary">Total Sales</p>
                 <p className="text-2xl font-bold text-success">
                   {formatCurrency(sales.reduce((sum, s) => sum + s.total_amount, 0))}
                 </p>
               </div>
+            </div>
+            <div className="card-metric">
               <div className="text-center">
                 <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
                 <p className="text-secondary">Balance Due</p>
@@ -875,6 +830,8 @@ const SalesModule = ({ initialShowDuesOnly = false }: SalesModuleProps) => {
                   {formatCurrency(sales.reduce((sum, s) => sum + s.balance_due, 0))}
                 </p>
               </div>
+            </div>
+            <div className="card-metric">
               <div className="text-center">
                 <User className="h-8 w-8 text-secondary mx-auto mb-2" />
                 <p className="text-secondary">Customers</p>

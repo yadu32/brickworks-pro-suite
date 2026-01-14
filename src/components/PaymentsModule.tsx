@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Plus, Edit, Trash2, Calendar, User, DollarSign, TrendingUp, Lock } from 'lucide-react';
+import { CreditCard, Plus, Edit, Trash2, Calendar, User, DollarSign, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,11 +8,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AddEmployeeDialog } from '@/components/AddEmployeeDialog';
-import { useFactory } from '@/hooks/useFactory';
-import { employeeApi } from '@/api';
-import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface EmployeePayment {
   id: string;
@@ -43,26 +41,7 @@ const PaymentsModule = () => {
   });
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [employeeOptions, setEmployeeOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [factoryId, setFactoryId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { factoryId: hookFactoryId } = useFactory();
-  const { guardAction, isReadOnly } = useSubscriptionGuard();
-
-  useEffect(() => {
-    if (hookFactoryId) {
-      setFactoryId(hookFactoryId);
-    }
-  }, [hookFactoryId]);
-
-  const handleAddClick = () => {
-    guardAction(() => {
-      // Auto-select first employee when opening dialog if available
-      if (employeeOptions.length > 0 && !paymentForm.employee_name) {
-        setPaymentForm(prev => ({ ...prev, employee_name: employeeOptions[0].value }));
-      }
-      setIsDialogOpen(true);
-    });
-  };
 
   // Auto-calculated wages
   const [productionWages, setProductionWages] = useState(0);
@@ -90,24 +69,26 @@ const PaymentsModule = () => {
     }).format(amount);
   };
 
-  const loadFactoryId = async () => {
-    // Factory ID is loaded via useFactory hook
-  };
-
   const loadPayments = async () => {
-    if (!factoryId) return;
+    let query = supabase
+      .from('employee_payments')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (dateFilter.start) {
+      query = query.gte('date', dateFilter.start);
+    }
+    if (dateFilter.end) {
+      query = query.lte('date', dateFilter.end);
+    }
+
+    const { data, error } = await query;
     
-    try {
-      const data = await employeeApi.getPayments(
-        factoryId,
-        dateFilter.start || undefined,
-        dateFilter.end || undefined
-      );
-      
+    if (error) {
+      toast({ title: 'Error loading payments', description: error.message, variant: 'destructive' });
+    } else {
       setPayments(data || []);
       calculateEmployeeSummaries(data || []);
-    } catch (error: any) {
-      toast({ title: 'Error loading payments', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
     }
   };
 
@@ -138,76 +119,88 @@ const PaymentsModule = () => {
   };
 
   const loadEmployeeNames = async () => {
-    if (!factoryId) return;
+    const { data, error } = await supabase
+      .from('employee_payments')
+      .select('employee_name')
+      .order('employee_name');
     
-    try {
-      const data = await employeeApi.getByFactory(factoryId);
-      const options = data?.map(emp => ({
-        value: emp.name,
-        label: emp.name
-      })) || [];
+    if (error) {
+      console.error('Error loading employees', error);
+    } else {
+      const uniqueEmployees = new Set<string>();
+      data?.forEach(payment => {
+        if (payment.employee_name) {
+          uniqueEmployees.add(payment.employee_name);
+        }
+      });
+      
+      const options = Array.from(uniqueEmployees).map(name => ({
+        value: name,
+        label: name
+      }));
       
       setEmployeeOptions(options);
-    } catch (error) {
-      console.error('Error loading employees', error);
-      setEmployeeOptions([]);
     }
   };
 
   const loadEmployeePayments = async (employeeName: string) => {
-    if (!factoryId) return;
+    const { data, error } = await supabase
+      .from('employee_payments')
+      .select('*')
+      .ilike('employee_name', employeeName)
+      .order('date', { ascending: false });
     
-    try {
-      const data = await employeeApi.getPayments(factoryId);
-      const filtered = data
-        .filter(p => p.employee_name.toLowerCase() === employeeName.toLowerCase())
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
-      setEmployeePayments(filtered || []);
-    } catch (error: any) {
-      toast({ title: 'Error loading employee payments', description: error.response?.data?.detail || 'Failed to load', variant: 'destructive' });
+    if (error) {
+      toast({ title: 'Error loading employee payments', description: error.message, variant: 'destructive' });
+    } else {
+      setEmployeePayments(data || []);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!factoryId) {
-      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
-      return;
-    }
     
     const paymentData = {
       date: paymentForm.date,
       employee_name: paymentForm.employee_name,
       amount: Number(paymentForm.amount),
       payment_type: paymentForm.payment_type,
-      notes: paymentForm.notes,
-      factory_id: factoryId
+      notes: paymentForm.notes
     };
 
-    try {
-      if (editingPayment) {
-        toast({ title: 'Update functionality coming soon' });
-        return;
-      } else {
-        await employeeApi.createPayment(paymentData);
-      }
-
-      await loadPayments();
-      setIsDialogOpen(false);
-      setEditingPayment(null);
-      setPaymentForm({
-        date: new Date().toISOString().split('T')[0],
-        employee_name: '',
-        amount: '',
-        payment_type: '',
-        notes: ''
-      });
+    if (editingPayment) {
+      const { error } = await supabase
+        .from('employee_payments')
+        .update(paymentData)
+        .eq('id', editingPayment.id);
       
-      toast({ title: editingPayment ? 'Payment updated successfully' : 'Payment added successfully' });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to save payment', variant: 'destructive' });
+      if (error) {
+        toast({ title: 'Error updating payment', description: error.message, variant: 'destructive' });
+        return;
+      }
+    } else {
+      const { error } = await supabase
+        .from('employee_payments')
+        .insert([paymentData]);
+      
+      if (error) {
+        toast({ title: 'Error adding payment', description: error.message, variant: 'destructive' });
+        return;
+      }
     }
+
+    await loadPayments();
+    setIsDialogOpen(false);
+    setEditingPayment(null);
+    setPaymentForm({
+      date: new Date().toISOString().split('T')[0],
+      employee_name: '',
+      amount: '',
+      payment_type: '',
+      notes: ''
+    });
+    
+    toast({ title: editingPayment ? 'Payment updated successfully' : 'Payment added successfully' });
   };
 
   const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
@@ -216,12 +209,16 @@ const PaymentsModule = () => {
   });
 
   const deletePayment = async (id: string) => {
-    try {
-      await employeeApi.deletePayment(id);
+    const { error } = await supabase
+      .from('employee_payments')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      toast({ title: 'Error deleting payment', description: error.message, variant: 'destructive' });
+    } else {
       await loadPayments();
       toast({ title: 'Payment deleted successfully' });
-    } catch (error: any) {
-      toast({ title: 'Error deleting payment', description: error.response?.data?.detail || 'Failed to delete', variant: 'destructive' });
     }
     setDeleteDialogState({open: false, id: ''});
   };
@@ -270,16 +267,10 @@ const PaymentsModule = () => {
   };
 
   useEffect(() => {
-    loadFactoryId();
-  }, []);
-
-  useEffect(() => {
-    if (factoryId) {
-      loadPayments();
-      loadEmployeeNames();
-      calculateAutoWages();
-    }
-  }, [factoryId, dateFilter]);
+    loadPayments();
+    loadEmployeeNames();
+    calculateAutoWages();
+  }, [dateFilter]);
 
   const calculateAutoWages = async () => {
     try {
@@ -464,25 +455,15 @@ const PaymentsModule = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <Label htmlFor="employeeName">Employee Name</Label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsAddEmployeeOpen(true)}
-                        className="h-7 text-xs"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add New
-                      </Button>
-                    </div>
+                    <Label htmlFor="employeeName">Employee Name</Label>
                     <SearchableSelect
                       value={paymentForm.employee_name}
                       onValueChange={(value) => setPaymentForm({ ...paymentForm, employee_name: value })}
                       options={employeeOptions}
                       placeholder="Select employee..."
                       searchPlaceholder="Search employees..."
+                      onAddNew={() => setIsAddEmployeeOpen(true)}
+                      addNewLabel="Add New Employee"
                     />
                   </div>
                   <div>
@@ -528,11 +509,51 @@ const PaymentsModule = () => {
           />
         </div>
 
-        {/* Payment Summary - Consolidated */}
+        {/* Date Filter */}
+        <section className="animate-fade-in">
+          <div className="card-dark p-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Filter by Date Range</h3>
+            <div className="flex gap-4 items-end">
+              <div>
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={dateFilter.start}
+                  onChange={(e) => setDateFilter({...dateFilter, start: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="endDate">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={dateFilter.end}
+                  onChange={(e) => setDateFilter({...dateFilter, end: e.target.value})}
+                />
+              </div>
+              <Button variant="outline" onClick={clearDateFilter}>
+                Clear Filter
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Payment Summary */}
         <section className="animate-fade-in">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Payment Summary</h2>
-          <div className="card-metric">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="card-metric">
+              <div className="text-center">
+                <CreditCard className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-secondary">Today's Payments</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatCurrency(todayPayments.reduce((sum, payment) => sum + payment.amount, 0))}
+                </p>
+                <p className="text-sm text-secondary">{todayPayments.length} payments</p>
+              </div>
+            </div>
+            <div className="card-metric">
               <div className="text-center">
                 <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
                 <p className="text-secondary">Weekly Payments</p>
@@ -541,6 +562,8 @@ const PaymentsModule = () => {
                 </p>
                 <p className="text-sm text-secondary">{weeklyPayments.length} payments</p>
               </div>
+            </div>
+            <div className="card-metric">
               <div className="text-center">
                 <DollarSign className="h-8 w-8 text-warning mx-auto mb-2" />
                 <p className="text-secondary">Total Payments</p>
@@ -549,6 +572,8 @@ const PaymentsModule = () => {
                 </p>
                 <p className="text-sm text-secondary">{payments.length} payments</p>
               </div>
+            </div>
+            <div className="card-metric">
               <div className="text-center">
                 <User className="h-8 w-8 text-secondary mx-auto mb-2" />
                 <p className="text-secondary">Employees</p>

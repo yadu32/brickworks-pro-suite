@@ -54,7 +54,7 @@ export function SearchableSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0 bg-background border-border z-[60]">
+        <PopoverContent className="w-[300px] p-0 bg-background border-border z-50">
           <Command className="bg-background">
             <CommandInput placeholder={searchPlaceholder} className="bg-background" />
             <CommandEmpty>No results found.</CommandEmpty>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useFactory } from '@/hooks/useFactory';
-import { expenseApi } from '@/api';
 import { Plus, Trash2, TrendingDown, DollarSign } from 'lucide-react';
 
 interface OtherExpense {
@@ -22,7 +21,6 @@ interface OtherExpense {
   vendor_name: string | null;
   receipt_number: string | null;
   notes: string | null;
-  factory_id: string;
 }
 
 const OtherExpensesModule = () => {
@@ -30,7 +28,6 @@ const OtherExpensesModule = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { factoryId } = useFactory();
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -59,46 +56,41 @@ const OtherExpensesModule = () => {
   };
 
   const loadExpenses = async () => {
-    if (!factoryId) return;
-    
     setLoading(true);
-    try {
-      const data = await expenseApi.getOtherExpenses(factoryId);
+    const { data, error } = await supabase
+      .from('other_expenses')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (error) {
+      toast({ title: 'Error loading expenses', description: error.message, variant: 'destructive' });
+    } else {
       setExpenses(data || []);
-    } catch (error: any) {
-      console.error('Error loading expenses:', error);
-      toast({ title: 'Error loading expenses', description: error.response?.data?.detail || 'Failed to load expenses', variant: 'destructive' });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
-    if (factoryId) {
-      loadExpenses();
-    }
-  }, [factoryId]);
+    loadExpenses();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!factoryId) return;
-
     setLoading(true);
 
-    try {
-      const expenseData = {
-        date: formData.date,
-        expense_type: formData.expense_type,
-        description: formData.description,
-        amount: Number(formData.amount),
-        vendor_name: formData.vendor_name || undefined,
-        receipt_number: formData.receipt_number || undefined,
-        notes: formData.notes || undefined,
-        factory_id: factoryId
-      };
+    const { error } = await supabase.from('other_expenses').insert([{
+      date: formData.date,
+      expense_type: formData.expense_type,
+      description: formData.description,
+      amount: parseFloat(formData.amount),
+      vendor_name: formData.vendor_name || null,
+      receipt_number: formData.receipt_number || null,
+      notes: formData.notes || null
+    }]);
 
-      await expenseApi.createOtherExpense(expenseData);
-      
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
       toast({ title: 'Success', description: 'Expense added successfully' });
       setFormData({
         date: new Date().toISOString().split('T')[0],
@@ -110,17 +102,9 @@ const OtherExpensesModule = () => {
         notes: ''
       });
       setIsDialogOpen(false);
-      await loadExpenses();
-    } catch (error: any) {
-      console.error('Error adding expense:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.response?.data?.detail || 'Failed to add expense. Please try again.', 
-        variant: 'destructive' 
-      });
-    } finally {
-      setLoading(false);
+      loadExpenses();
     }
+    setLoading(false);
   };
 
   const [deleteDialogState, setDeleteDialogState] = useState<{open: boolean, id: string}>({
@@ -129,20 +113,15 @@ const OtherExpensesModule = () => {
   });
 
   const deleteExpense = async (id: string) => {
-    try {
-      await expenseApi.deleteOtherExpense(id);
+    const { error } = await supabase.from('other_expenses').delete().eq('id', id);
+    
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
       toast({ title: 'Success', description: 'Expense deleted' });
-      await loadExpenses();
-    } catch (error: any) {
-      console.error('Error deleting expense:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.response?.data?.detail || 'Failed to delete expense. Please try again.', 
-        variant: 'destructive' 
-      });
-    } finally {
-      setDeleteDialogState({open: false, id: ''});
+      loadExpenses();
     }
+    setDeleteDialogState({open: false, id: ''});
   };
 
   const getTotalByType = () => {
@@ -304,53 +283,46 @@ const OtherExpensesModule = () => {
 
       <Card className="p-6">
         <h3 className="text-xl font-semibold mb-4 text-foreground">Recent Expenses</h3>
-        {expenses.length === 0 ? (
-          <div className="text-center py-8">
-            <TrendingDown className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No expenses recorded yet</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Receipt #</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead></TableHead>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead>Receipt #</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {expenses.map((expense) => (
+                <TableRow key={expense.id}>
+                  <TableCell>{new Date(expense.date).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <span className="px-2 py-1 bg-muted rounded text-xs">
+                      {expenseTypes.find(t => t.value === expense.expense_type)?.label}
+                    </span>
+                  </TableCell>
+                  <TableCell>{expense.description}</TableCell>
+                  <TableCell>{expense.vendor_name || '-'}</TableCell>
+                  <TableCell>{expense.receipt_number || '-'}</TableCell>
+                  <TableCell className="text-right font-semibold">{formatCurrency(expense.amount)}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteDialogState({open: true, id: expense.id})}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenses.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell>{new Date(expense.date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 bg-muted rounded text-xs">
-                        {expenseTypes.find(t => t.value === expense.expense_type)?.label}
-                      </span>
-                    </TableCell>
-                    <TableCell>{expense.description}</TableCell>
-                    <TableCell>{expense.vendor_name || '-'}</TableCell>
-                    <TableCell>{expense.receipt_number || '-'}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(expense.amount)}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteDialogState({open: true, id: expense.id})}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
       
       {/* Delete Confirmation Dialog */}

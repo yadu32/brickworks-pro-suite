@@ -1,30 +1,32 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Calendar, TrendingUp, Package, Users, DollarSign, Factory, Truck, Building } from 'lucide-react';
+import { FileText, Download, Calendar, TrendingUp, Package, Users, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useFactory } from '@/hooks/useFactory';
-import { productionApi, saleApi, materialApi, employeeApi, expenseApi } from '@/api';
+import { supabase } from '@/integrations/supabase/client';
 
-interface ReportData {
+interface WeeklyReport {
   startDate: string;
   endDate: string;
   production: {
+    fourInch: number;
+    sixInch: number;
+    total: number;
     totalPunches: number;
-    byType: { name: string; quantity: number; punches: number }[];
+    fourInchPunches: number;
+    sixInchPunches: number;
   };
   sales: {
     totalRevenue: number;
-    totalQtySold: number;
+    totalQuantity: number;
     outstandingBalance: number;
-    records: any[];
   };
   materials: {
-    purchased: { name: string; quantity: number; cost: number }[];
-    used: { name: string; quantity: number }[];
-    totalPurchaseCost: number;
+    cement: { purchased: number; used: number; cost: number };
+    dust: { purchased: number; used: number; cost: number };
+    diesel: { purchased: number; used: number; cost: number };
   };
   payments: {
     salary: number;
@@ -32,45 +34,38 @@ interface ReportData {
     bonus: number;
     incentive: number;
     total: number;
-    records: any[];
   };
   cogs: {
-    materialCost: number;
+    materialCosts: number;
     productionWages: number;
     loadingWages: number;
     totalCOGS: number;
   };
-  expenses: {
+  otherExpenses: {
     transport: number;
     utilities: number;
-    salaries: number;
+    officeSalaries: number;
     repairs: number;
     miscellaneous: number;
     total: number;
-    records: any[];
   };
-  netProfit: number;
-  productionRecords: any[];
-  purchaseRecords: any[];
-  usageRecords: any[];
 }
 
 const ReportsModule = () => {
-  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [reportData, setReportData] = useState<WeeklyReport | null>(null);
   const [loading, setLoading] = useState(false);
-  const { factoryId } = useFactory();
   const [dateRange, setDateRange] = useState({
     startDate: (() => {
       const date = new Date();
       const day = date.getDay();
-      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Monday
       const monday = new Date(date.setDate(diff));
       return monday.toISOString().split('T')[0];
     })(),
     endDate: (() => {
       const date = new Date();
       const day = date.getDay();
-      const diff = date.getDate() - day + (day === 0 ? 0 : 7);
+      const diff = date.getDate() - day + (day === 0 ? 0 : 7); // Sunday
       const sunday = new Date(date.setDate(diff));
       return sunday.toISOString().split('T')[0];
     })()
@@ -85,188 +80,155 @@ const ReportsModule = () => {
     }).format(amount);
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  useEffect(() => {
-    if (factoryId) {
-      generateReport();
-    }
-  }, [factoryId]);
-
   const generateReport = async () => {
-    if (!factoryId) {
-      toast({ title: 'Error', description: 'Factory not found', variant: 'destructive' });
-      return;
-    }
-    
     setLoading(true);
     try {
-      // Default rates for wage calculations (can be made configurable later)
-      const productionRate = 15; // per punch
-      const loadingRate = 2; // per brick
+      // Get brick types
+      const { data: brickTypes } = await supabase
+        .from('brick_types')
+        .select('*');
 
-      // Fetch all data in parallel
-      const [productionData, salesData, purchasesData, usageData, paymentsData, expensesData] = await Promise.all([
-        productionApi.getByFactory(factoryId, dateRange.startDate, dateRange.endDate),
-        saleApi.getByFactory(factoryId),
-        materialApi.getPurchases(factoryId, dateRange.startDate, dateRange.endDate),
-        materialApi.getUsage(factoryId, dateRange.startDate, dateRange.endDate),
-        employeeApi.getPayments(factoryId, dateRange.startDate, dateRange.endDate),
-        expenseApi.getOtherExpenses(factoryId)
-      ]);
+      const fourInchType = brickTypes?.find(bt => bt.type_name.toLowerCase().includes('4-inch') || bt.type_name.toLowerCase().includes('4 inch'));
+      const sixInchType = brickTypes?.find(bt => bt.type_name.toLowerCase().includes('6-inch') || bt.type_name.toLowerCase().includes('6 inch'));
 
-      // Filter sales and expenses by date range
-      const filteredSales = salesData.filter(s => {
-        const saleDate = new Date(s.date);
-        const start = new Date(dateRange.startDate);
-        const end = new Date(dateRange.endDate);
-        return saleDate >= start && saleDate <= end;
-      });
+      // Production data
+      const { data: productionData } = await supabase
+        .from('bricks_production')
+        .select('*, brick_types(*)')
+        .gte('date', dateRange.startDate)
+        .lte('date', dateRange.endDate);
 
-      const filteredExpenses = expensesData.filter(e => {
-        const expenseDate = new Date(e.date);
-        const start = new Date(dateRange.startDate);
-        const end = new Date(dateRange.endDate);
-        return expenseDate >= start && expenseDate <= end;
-      });
+      const totalPunches = productionData?.reduce((sum, p) => sum + p.number_of_punches, 0) || 0;
+      const fourInchPunches = productionData?.filter(p => p.brick_type_id === fourInchType?.id)
+        .reduce((sum, p) => sum + p.number_of_punches, 0) || 0;
+      const sixInchPunches = productionData?.filter(p => p.brick_type_id === sixInchType?.id)
+        .reduce((sum, p) => sum + p.number_of_punches, 0) || 0;
+      
+      const production = {
+        fourInch: productionData?.filter(p => p.brick_type_id === fourInchType?.id)
+          .reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
+        sixInch: productionData?.filter(p => p.brick_type_id === sixInchType?.id)
+          .reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
+        total: productionData?.reduce((sum, p) => sum + p.actual_bricks_produced, 0) || 0,
+        totalPunches,
+        fourInchPunches,
+        sixInchPunches
+      };
 
-      // Calculate Production Summary
-      const productionByType = new Map<string, { name: string; quantity: number; punches: number }>();
-      let totalPunches = 0;
-      productionData?.forEach(p => {
-        const typeName = p.product_name || 'Unknown';
-        const existing = productionByType.get(typeName) || { name: typeName, quantity: 0, punches: 0 };
-        existing.quantity += p.quantity;
-        existing.punches += p.punches || 0;
-        totalPunches += p.punches || 0;
-        productionByType.set(typeName, existing);
-      });
+      // Sales data
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('*')
+        .gte('date', dateRange.startDate)
+        .lte('date', dateRange.endDate);
 
-      // Calculate Sales Performance
-      const totalRevenue = filteredSales?.reduce((sum, s) => sum + Number(s.total_amount || 0), 0) || 0;
-      const totalQtySold = filteredSales?.reduce((sum, s) => sum + Number(s.quantity_sold || 0), 0) || 0;
-      const outstandingBalance = filteredSales?.reduce((sum, s) => sum + Number(s.balance_due || 0), 0) || 0;
+      const sales = {
+        totalRevenue: salesData?.reduce((sum, s) => sum + s.total_amount, 0) || 0,
+        totalQuantity: salesData?.reduce((sum, s) => sum + s.quantity_sold, 0) || 0,
+        outstandingBalance: salesData?.reduce((sum, s) => sum + s.balance_due, 0) || 0
+      };
 
-      // Calculate Materials Consumption
-      const purchasesByMaterial = new Map<string, { name: string; quantity: number; cost: number }>();
-      const usageByMaterial = new Map<string, { name: string; quantity: number }>();
-      let totalPurchaseCost = 0;
+      // Materials data
+      const { data: materialsData } = await supabase
+        .from('materials')
+        .select('*');
 
-      purchasesData?.forEach(p => {
-        const materialName = p.material_name || 'Unknown';
-        const cost = Number(p.quantity_purchased || 0) * Number(p.unit_cost || 0);
-        const existing = purchasesByMaterial.get(materialName) || { name: materialName, quantity: 0, cost: 0 };
-        existing.quantity += Number(p.quantity_purchased || 0);
-        existing.cost += cost;
-        totalPurchaseCost += cost;
-        purchasesByMaterial.set(materialName, existing);
-      });
+      const { data: purchasesData } = await supabase
+        .from('material_purchases')
+        .select('*, materials(*)')
+        .gte('date', dateRange.startDate)
+        .lte('date', dateRange.endDate);
 
-      usageData?.forEach(u => {
-        const materialName = u.material_name || 'Unknown';
-        const existing = usageByMaterial.get(materialName) || { name: materialName, quantity: 0 };
-        existing.quantity += Number(u.quantity_used || 0);
-        usageByMaterial.set(materialName, existing);
-      });
+      const { data: usageData } = await supabase
+        .from('material_usage')
+        .select('*, materials(*)')
+        .gte('date', dateRange.startDate)
+        .lte('date', dateRange.endDate);
 
-      // Calculate Employee Payments
-      let salary = 0, advance = 0, bonus = 0, incentive = 0;
-      paymentsData?.forEach(p => {
-        const amount = Number(p.amount || 0);
-        switch (p.payment_type?.toLowerCase()) {
-          case 'salary': salary += amount; break;
-          case 'advance': advance += amount; break;
-          case 'bonus': bonus += amount; break;
-          case 'incentive': incentive += amount; break;
-          default: salary += amount;
-        }
-      });
-      const totalPayments = salary + advance + bonus + incentive;
+      const getMaterialData = (materialName: string) => {
+        const purchases = purchasesData?.filter(p => p.materials?.material_name?.toLowerCase().includes(materialName.toLowerCase())) || [];
+        const usage = usageData?.filter(u => u.materials?.material_name?.toLowerCase().includes(materialName.toLowerCase())) || [];
+        
+        return {
+          purchased: purchases.reduce((sum, p) => sum + Number(p.quantity_purchased), 0),
+          used: usage.reduce((sum, u) => sum + Number(u.quantity_used), 0),
+          cost: purchases.reduce((sum, p) => sum + (Number(p.quantity_purchased) * Number(p.unit_cost)), 0)
+        };
+      };
+
+      const materials = {
+        cement: getMaterialData('Cement'),
+        dust: getMaterialData('Dust'),
+        diesel: getMaterialData('Diesel')
+      };
+
+      // Payments data
+      const { data: paymentsData } = await supabase
+        .from('employee_payments')
+        .select('*')
+        .gte('date', dateRange.startDate)
+        .lte('date', dateRange.endDate);
+
+      const payments = {
+        salary: paymentsData?.filter(p => p.payment_type === 'Salary').reduce((sum, p) => sum + p.amount, 0) || 0,
+        advance: paymentsData?.filter(p => p.payment_type === 'Advance').reduce((sum, p) => sum + p.amount, 0) || 0,
+        bonus: paymentsData?.filter(p => p.payment_type === 'Bonus').reduce((sum, p) => sum + p.amount, 0) || 0,
+        incentive: paymentsData?.filter(p => p.payment_type === 'Incentive').reduce((sum, p) => sum + p.amount, 0) || 0,
+        total: paymentsData?.reduce((sum, p) => sum + p.amount, 0) || 0
+      };
+
+      // Get factory rates for COGS calculation
+      const { data: ratesData } = await supabase
+        .from("factory_rates")
+        .select("*")
+        .eq("is_active", true);
+
+      const productionRate = ratesData?.find((r) => r.rate_type === "production_per_punch")?.rate_amount || 15;
+      const loadingRate = ratesData?.find((r) => r.rate_type === "loading_per_brick")?.rate_amount || 2;
 
       // Calculate COGS
+      const materialCosts = materials.cement.cost + materials.dust.cost + materials.diesel.cost;
       const productionWages = totalPunches * productionRate;
-      const loadingWages = totalQtySold * loadingRate;
-      const totalCOGS = totalPurchaseCost + productionWages + loadingWages;
+      const loadingWages = sales.totalQuantity * loadingRate;
+      const totalCOGS = materialCosts + productionWages + loadingWages;
 
-      // Calculate Operating Expenses
-      let transport = 0, utilities = 0, officeSalaries = 0, repairs = 0, miscellaneous = 0;
-      filteredExpenses?.forEach(e => {
-        const amount = Number(e.amount || 0);
-        switch (e.expense_type?.toLowerCase()) {
-          case 'transport': transport += amount; break;
-          case 'utilities': utilities += amount; break;
-          case 'office salaries':
-          case 'salaries': officeSalaries += amount; break;
-          case 'repairs': repairs += amount; break;
-          default: miscellaneous += amount;
-        }
-      });
-      const totalExpenses = transport + utilities + officeSalaries + repairs + miscellaneous;
+      const cogs = {
+        materialCosts,
+        productionWages,
+        loadingWages,
+        totalCOGS
+      };
 
-      // Calculate Net Profit
-      const netProfit = totalRevenue - totalCOGS - totalPayments - totalExpenses;
+      // Other Expenses data
+      const { data: expensesData } = await supabase
+        .from('other_expenses')
+        .select('*')
+        .gte('date', dateRange.startDate)
+        .lte('date', dateRange.endDate);
+
+      const otherExpenses = {
+        transport: expensesData?.filter(e => e.expense_type === 'Transport').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        utilities: expensesData?.filter(e => e.expense_type === 'Utilities').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        officeSalaries: expensesData?.filter(e => e.expense_type === 'Office Salaries').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        repairs: expensesData?.filter(e => e.expense_type === 'Repairs & Maintenance').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        miscellaneous: expensesData?.filter(e => e.expense_type === 'Miscellaneous').reduce((sum, e) => sum + Number(e.amount), 0) || 0,
+        total: expensesData?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
+      };
 
       setReportData({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
-        production: {
-          totalPunches,
-          byType: Array.from(productionByType.values())
-        },
-        sales: {
-          totalRevenue,
-          totalQtySold,
-          outstandingBalance,
-          records: filteredSales || []
-        },
-        materials: {
-          purchased: Array.from(purchasesByMaterial.values()),
-          used: Array.from(usageByMaterial.values()),
-          totalPurchaseCost
-        },
-        payments: {
-          salary,
-          advance,
-          bonus,
-          incentive,
-          total: totalPayments,
-          records: paymentsData || []
-        },
-        cogs: {
-          materialCost: totalPurchaseCost,
-          productionWages,
-          loadingWages,
-          totalCOGS
-        },
-        expenses: {
-          transport,
-          utilities,
-          salaries: officeSalaries,
-          repairs,
-          miscellaneous,
-          total: totalExpenses,
-          records: filteredExpenses || []
-        },
-        netProfit,
-        productionRecords: productionData || [],
-        purchaseRecords: purchasesData || [],
-        usageRecords: usageData || []
+        production,
+        sales,
+        materials,
+        payments,
+        cogs,
+        otherExpenses
       });
 
-      toast({ title: 'Success', description: 'Report generated successfully' });
-    } catch (error: any) {
-      console.error('Error generating report:', error);
-      toast({ 
-        title: 'Error generating report', 
-        description: error.response?.data?.detail || 'Please try again', 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Report generated successfully' });
+    } catch (error) {
+      toast({ title: 'Error generating report', description: 'Please try again', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -275,87 +237,57 @@ const ReportsModule = () => {
   const exportToCSV = () => {
     if (!reportData) return;
 
-    const lines: string[] = [];
-    
-    // Header
-    lines.push('BricksFlow - Detailed Report');
-    lines.push(`Period: ${formatDate(reportData.startDate)} to ${formatDate(reportData.endDate)}`);
-    lines.push('');
-    
-    // Summary Section
-    lines.push('=== SUMMARY ===');
-    lines.push(`Net Profit,${reportData.netProfit}`);
-    lines.push(`Total Revenue,${reportData.sales.totalRevenue}`);
-    lines.push(`Total COGS,${reportData.cogs.totalCOGS}`);
-    lines.push(`Total Payments,${reportData.payments.total}`);
-    lines.push(`Total Expenses,${reportData.expenses.total}`);
-    lines.push('');
+    const csv = [
+      ['BrickWorks Manager - Weekly Report'],
+      [`Period: ${new Date(reportData.startDate).toLocaleDateString()} to ${new Date(reportData.endDate).toLocaleDateString()}`],
+      [''],
+      ['PRODUCTION SUMMARY'],
+      ['Brick Type', 'Quantity Produced'],
+      ['4-inch Bricks', reportData.production.fourInch.toString()],
+      ['6-inch Bricks', reportData.production.sixInch.toString()],
+      ['Total Production', reportData.production.total.toString()],
+      [''],
+      ['SALES SUMMARY'],
+      ['Metric', 'Value'],
+      ['Total Revenue', reportData.sales.totalRevenue.toString()],
+      ['Total Quantity Sold', reportData.sales.totalQuantity.toString()],
+      ['Outstanding Balance', reportData.sales.outstandingBalance.toString()],
+      [''],
+      ['MATERIALS SUMMARY'],
+      ['Material', 'Purchased', 'Used', 'Cost'],
+      ['Cement', reportData.materials.cement.purchased.toString(), reportData.materials.cement.used.toString(), reportData.materials.cement.cost.toString()],
+      ['Dust', reportData.materials.dust.purchased.toString(), reportData.materials.dust.used.toString(), reportData.materials.dust.cost.toString()],
+      ['Diesel', reportData.materials.diesel.purchased.toString(), reportData.materials.diesel.used.toString(), reportData.materials.diesel.cost.toString()],
+      [''],
+      ['EMPLOYEE PAYMENTS'],
+      ['Payment Type', 'Amount'],
+      ['Salary', reportData.payments.salary.toString()],
+      ['Advance', reportData.payments.advance.toString()],
+      ['Bonus', reportData.payments.bonus.toString()],
+      ['Incentive', reportData.payments.incentive.toString()],
+      ['Total Payments', reportData.payments.total.toString()]
+    ].map(row => row.join(',')).join('\n');
 
-    // Production Records Section
-    lines.push('=== PRODUCTION RECORDS ===');
-    lines.push('Date,Product,Quantity,Punches,Remarks');
-    reportData.productionRecords.forEach(p => {
-      lines.push(`${p.date},${p.product_name},${p.quantity},${p.punches || ''},${p.remarks || ''}`);
-    });
-    lines.push('');
-
-    // Sales Records Section
-    lines.push('=== SALES RECORDS ===');
-    lines.push('Date,Customer,Phone,Product,Quantity,Rate,Total,Received,Balance,Notes');
-    reportData.sales.records.forEach(s => {
-      lines.push(`${s.date},${s.customer_name},${s.customer_phone || ''},${s.product_name || ''},${s.quantity_sold},${s.rate_per_brick || ''},${s.total_amount},${s.amount_received || 0},${s.balance_due || 0},${s.notes || ''}`);
-    });
-    lines.push('');
-
-    // Material Purchases Section
-    lines.push('=== MATERIAL PURCHASES ===');
-    lines.push('Date,Material,Supplier,Quantity,Unit Cost,Total Cost,Payment Made,Notes');
-    reportData.purchaseRecords.forEach(p => {
-      const totalCost = Number(p.quantity_purchased) * Number(p.unit_cost);
-      lines.push(`${p.date},${p.material_name},${p.supplier_name},${p.quantity_purchased},${p.unit_cost},${totalCost},${p.payment_made || 0},${p.notes || ''}`);
-    });
-    lines.push('');
-
-    // Material Usage Section
-    lines.push('=== MATERIAL USAGE ===');
-    lines.push('Date,Material,Quantity,Purpose');
-    reportData.usageRecords.forEach(u => {
-      lines.push(`${u.date},${u.material_name},${u.quantity_used},${u.purpose}`);
-    });
-    lines.push('');
-
-    // Employee Payments Section
-    lines.push('=== EMPLOYEE PAYMENTS ===');
-    lines.push('Date,Employee,Type,Amount,Notes');
-    reportData.payments.records.forEach(p => {
-      lines.push(`${p.date},${p.employee_name},${p.payment_type},${p.amount},${p.notes || ''}`);
-    });
-    lines.push('');
-
-    // Expense Records Section
-    lines.push('=== OTHER EXPENSES ===');
-    lines.push('Date,Type,Description,Amount,Vendor,Receipt,Notes');
-    reportData.expenses.records.forEach(e => {
-      lines.push(`${e.date},${e.expense_type},${e.description},${e.amount},${e.vendor_name || ''},${e.receipt_number || ''},${e.notes || ''}`);
-    });
-
-    const csv = lines.join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `bricksflow-report-${reportData.startDate}-to-${reportData.endDate}.csv`;
+    link.download = `weekly-report-${reportData.startDate}-to-${reportData.endDate}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
 
-    toast({ title: 'Success', description: 'Report exported successfully' });
+    toast({ title: 'Report exported successfully' });
   };
+
+  useEffect(() => {
+    generateReport();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-foreground">Reports</h1>
+          <h1 className="text-3xl font-bold text-foreground">Weekly Reports</h1>
           {reportData && (
             <Button onClick={exportToCSV} className="btn-secondary">
               <Download className="h-4 w-4 mr-2" />
@@ -365,312 +297,385 @@ const ReportsModule = () => {
         </div>
 
         {/* Date Range Selector */}
-        <Card className="card-dark">
-          <CardHeader>
-            <CardTitle className="text-foreground flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Choose Dates
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex gap-4 flex-wrap">
-                <div>
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={dateRange.startDate}
-                    onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
-                    className="input-dark"
-                  />
+        <section className="animate-fade-in">
+          <Card className="card-dark">
+            <CardHeader>
+              <CardTitle className="text-foreground flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                Choose Dates
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div>
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={dateRange.startDate}
+                      onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">End Date</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={dateRange.endDate}
+                      onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={dateRange.endDate}
-                    onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
-                    className="input-dark"
-                  />
-                </div>
+                <Button onClick={generateReport} disabled={loading} className="btn-primary w-full md:w-auto">
+                  <FileText className="h-4 w-4 mr-2" />
+                  {loading ? 'Generating...' : 'Show Report'}
+                </Button>
               </div>
-              <Button onClick={generateReport} disabled={loading} className="btn-primary w-full md:w-auto">
-                <FileText className="h-4 w-4 mr-2" />
-                {loading ? 'Generating...' : 'Show Report'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </section>
 
         {reportData && (
           <>
             {/* Profit/Loss Summary - TOP */}
-            <Card className="card-metric border-2 border-primary">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center text-xl">
-                  <DollarSign className="h-6 w-6 mr-2" />
-                  Profit/Loss Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center mb-6">
-                  <p className="text-muted-foreground text-sm mb-2">Net Profit</p>
-                  <p className={`text-4xl font-bold ${reportData.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {formatCurrency(reportData.netProfit)}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-border">
-                  <div className="text-center">
-                    <p className="text-muted-foreground text-xs">Revenue</p>
-                    <p className="text-lg font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
+            <section className="animate-scale-in">
+              <Card className="card-metric border-2 border-primary">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center text-xl">
+                    <DollarSign className="h-6 w-6 mr-2" />
+                    Profit/Loss Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div className="text-center">
+                      <p className="text-secondary">Total Revenue</p>
+                      <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Total COGS</p>
+                      <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Employee Payments</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Operating Expenses</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.otherExpenses.total)}</p>
+                    </div>
+                    <div className="text-center bg-muted/30 rounded-lg p-3">
+                      <p className="text-secondary font-semibold">Net Profit</p>
+                      {(() => {
+                        const netProfit = reportData.sales.totalRevenue - reportData.cogs.totalCOGS - reportData.payments.total - reportData.otherExpenses.total;
+                        return (
+                          <>
+                            <p className={`text-3xl font-bold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {formatCurrency(netProfit)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {reportData.sales.totalRevenue > 0 
+                                ? `${((netProfit / reportData.sales.totalRevenue) * 100).toFixed(1)}% margin`
+                                : 'N/A'
+                              }
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Report Header */}
+            <section className="animate-slide-up">
+              <Card className="card-metric">
+                <CardContent className="p-6">
                   <div className="text-center">
-                    <p className="text-muted-foreground text-xs">COGS</p>
-                    <p className="text-lg font-bold text-destructive">-{formatCurrency(reportData.cogs.totalCOGS)}</p>
+                    <h2 className="text-2xl font-bold text-foreground mb-2">BrickWorks Manager</h2>
+                    <h3 className="text-xl text-secondary mb-4">Weekly Report</h3>
+                    <p className="text-foreground">
+                      Period: {new Date(reportData.startDate).toLocaleDateString('en-IN')} to {new Date(reportData.endDate).toLocaleDateString('en-IN')}
+                    </p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-muted-foreground text-xs">Payments</p>
-                    <p className="text-lg font-bold text-warning">-{formatCurrency(reportData.payments.total)}</p>
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Punch Count Header Cards */}
+            <section className="animate-fade-in">
+              <Card className="card-metric">
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                      <p className="text-secondary">Total Punches</p>
+                      <p className="text-3xl font-bold text-primary">{reportData.production.totalPunches.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <Package className="h-8 w-8 text-success mx-auto mb-2" />
+                      <p className="text-secondary">4-inch Punches</p>
+                      <p className="text-2xl font-bold text-success">{reportData.production.fourInchPunches.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <Package className="h-8 w-8 text-warning mx-auto mb-2" />
+                      <p className="text-secondary">6-inch Punches</p>
+                      <p className="text-2xl font-bold text-warning">{reportData.production.sixInchPunches.toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-muted-foreground text-xs">Expenses</p>
-                    <p className="text-lg font-bold text-warning">-{formatCurrency(reportData.expenses.total)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </section>
 
             {/* Production Summary */}
-            <Card className="card-dark">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <Factory className="h-5 w-5 mr-2 text-primary" />
-                  Production Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="bg-muted/20 rounded-lg p-4 text-center">
-                    <p className="text-secondary text-sm font-medium">Total Punches</p>
-                    <p className="text-2xl font-bold text-foreground">{reportData.production.totalPunches.toLocaleString()}</p>
-                  </div>
-                  {reportData.production.byType.map((type, i) => (
-                    <div key={i} className="bg-muted/20 rounded-lg p-4 text-center">
-                      <p className="text-secondary text-sm font-medium">{type.name}</p>
-                      <p className="text-2xl font-bold text-foreground">{type.quantity.toLocaleString()}</p>
-                      <p className="text-xs text-secondary">{type.punches} punches</p>
+            <section className="animate-fade-in">
+              <Card className="card-dark">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <Package className="h-5 w-5 mr-2" />
+                    Production Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <p className="text-secondary">4-inch Bricks</p>
+                      <p className="text-2xl font-bold text-primary">{reportData.production.fourInch.toLocaleString()}</p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <div className="text-center">
+                      <p className="text-secondary">6-inch Bricks</p>
+                      <p className="text-2xl font-bold text-success">{reportData.production.sixInch.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Total Production</p>
+                      <p className="text-2xl font-bold text-foreground">{reportData.production.total.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
 
-            {/* Sales Performance */}
-            <Card className="card-dark">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2 text-success" />
-                  Sales Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-success/10 rounded-lg p-4 text-center">
-                    <p className="text-secondary text-sm font-medium">Total Revenue</p>
-                    <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
+            {/* Sales Summary */}
+            <section className="animate-slide-up">
+              <Card className="card-dark">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <TrendingUp className="h-5 w-5 mr-2" />
+                    Sales Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <p className="text-secondary">Total Revenue</p>
+                      <p className="text-2xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Total Quantity Sold</p>
+                      <p className="text-2xl font-bold text-foreground">{reportData.sales.totalQuantity.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Outstanding Balance</p>
+                      <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.sales.outstandingBalance)}</p>
+                    </div>
                   </div>
-                  <div className="bg-muted/20 rounded-lg p-4 text-center">
-                    <p className="text-secondary text-sm font-medium">Qty Sold</p>
-                    <p className="text-2xl font-bold text-foreground">{reportData.sales.totalQtySold.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-warning/10 rounded-lg p-4 text-center">
-                    <p className="text-secondary text-sm font-medium">Outstanding</p>
-                    <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.sales.outstandingBalance)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </section>
 
-            {/* Materials Consumption */}
-            <Card className="card-dark">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <Package className="h-5 w-5 mr-2 text-primary" />
-                  Materials Consumption
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-2 text-foreground font-semibold">Material</th>
-                        <th className="text-right py-2 text-foreground font-semibold">Purchased</th>
-                        <th className="text-right py-2 text-foreground font-semibold">Used</th>
-                        <th className="text-right py-2 text-foreground font-semibold">Cost</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportData.materials.purchased.map((m, i) => {
-                        const used = reportData.materials.used.find(u => u.name === m.name)?.quantity || 0;
-                        return (
-                          <tr key={i} className="border-b border-border/50">
-                            <td className="py-2 text-foreground">{m.name}</td>
-                            <td className="py-2 text-right text-foreground">{m.quantity.toLocaleString()}</td>
-                            <td className="py-2 text-right text-foreground">{used.toLocaleString()}</td>
-                            <td className="py-2 text-right text-destructive">{formatCurrency(m.cost)}</td>
-                          </tr>
-                        );
-                      })}
-                      <tr className="font-bold">
-                        <td colSpan={3} className="py-2 text-foreground">Total Material Cost</td>
-                        <td className="py-2 text-right text-destructive">{formatCurrency(reportData.materials.totalPurchaseCost)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Materials Summary */}
+            <section className="animate-fade-in">
+              <Card className="card-dark">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <Package className="h-5 w-5 mr-2" />
+                    Materials Used & Costs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 text-secondary">Material</th>
+                          <th className="text-left py-3 px-4 text-secondary">Purchased</th>
+                          <th className="text-left py-3 px-4 text-secondary">Used</th>
+                          <th className="text-left py-3 px-4 text-secondary">Cost</th>
+                          <th className="text-left py-3 px-4 text-secondary">Efficiency</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground font-medium">Cement</td>
+                          <td className="py-3 px-4 text-foreground">{reportData.materials.cement.purchased} bags</td>
+                          <td className="py-3 px-4 text-foreground">{reportData.materials.cement.used} bags</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.materials.cement.cost)}</td>
+                          <td className="py-3 px-4 text-foreground">
+                            {reportData.materials.cement.purchased > 0 
+                              ? `${((reportData.materials.cement.used / reportData.materials.cement.purchased) * 100).toFixed(1)}%`
+                              : 'N/A'
+                            }
+                          </td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground font-medium">Dust</td>
+                          <td className="py-3 px-4 text-foreground">{reportData.materials.dust.purchased} tons</td>
+                          <td className="py-3 px-4 text-foreground">{reportData.materials.dust.used} tons</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.materials.dust.cost)}</td>
+                          <td className="py-3 px-4 text-foreground">
+                            {reportData.materials.dust.purchased > 0 
+                              ? `${((reportData.materials.dust.used / reportData.materials.dust.purchased) * 100).toFixed(1)}%`
+                              : 'N/A'
+                            }
+                          </td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground font-medium">Diesel</td>
+                          <td className="py-3 px-4 text-foreground">{reportData.materials.diesel.purchased} liters</td>
+                          <td className="py-3 px-4 text-foreground">{reportData.materials.diesel.used} liters</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.materials.diesel.cost)}</td>
+                          <td className="py-3 px-4 text-foreground">
+                            {reportData.materials.diesel.purchased > 0 
+                              ? `${((reportData.materials.diesel.used / reportData.materials.diesel.purchased) * 100).toFixed(1)}%`
+                              : 'N/A'
+                            }
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
 
-            {/* Employee Payments */}
-            <Card className="card-dark">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-warning" />
-                  Employee Payments
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Salary</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.salary)}</p>
+            {/* Employee Payments Summary */}
+            <section className="animate-slide-up">
+              <Card className="card-dark">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <Users className="h-5 w-5 mr-2" />
+                    Employee Payments
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                    <div className="text-center">
+                      <p className="text-secondary">Salary</p>
+                      <p className="text-xl font-bold text-primary">{formatCurrency(reportData.payments.salary)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Advance</p>
+                      <p className="text-xl font-bold text-warning">{formatCurrency(reportData.payments.advance)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Bonus</p>
+                      <p className="text-xl font-bold text-success">{formatCurrency(reportData.payments.bonus)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Incentive</p>
+                      <p className="text-xl font-bold text-secondary">{formatCurrency(reportData.payments.incentive)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-secondary">Total</p>
+                      <p className="text-xl font-bold text-foreground">{formatCurrency(reportData.payments.total)}</p>
+                    </div>
                   </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Advance</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.advance)}</p>
-                  </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Bonus</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.bonus)}</p>
-                  </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Incentive</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.payments.incentive)}</p>
-                  </div>
-                  <div className="bg-warning/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Total</p>
-                    <p className="text-lg font-bold text-warning">{formatCurrency(reportData.payments.total)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </section>
 
             {/* COGS Breakdown */}
-            <Card className="card-dark">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <DollarSign className="h-5 w-5 mr-2 text-destructive" />
-                  Production Costs (COGS)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Material Costs</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.cogs.materialCost)}</p>
+            <section className="animate-fade-in">
+              <Card className="card-metric">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Production Costs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="text-center">
+                        <p className="text-secondary">Material Costs</p>
+                        <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.cogs.materialCosts)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-secondary">Production Wages</p>
+                        <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.cogs.productionWages)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {reportData.production.totalPunches} punches
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-secondary">Loading Wages</p>
+                        <p className="text-2xl font-bold text-warning">{formatCurrency(reportData.cogs.loadingWages)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {reportData.sales.totalQuantity} bricks
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-secondary">Total COGS</p>
+                        <p className="text-2xl font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Production Wages</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.cogs.productionWages)}</p>
-                  </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Loading Wages</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.cogs.loadingWages)}</p>
-                  </div>
-                  <div className="bg-destructive/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Total COGS</p>
-                    <p className="text-lg font-bold text-destructive">{formatCurrency(reportData.cogs.totalCOGS)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </section>
 
             {/* Operating Expenses */}
-            <Card className="card-dark">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <Truck className="h-5 w-5 mr-2 text-warning" />
-                  Operating Expenses
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Transport</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.transport)}</p>
+            <section className="animate-fade-in">
+              <Card className="card-dark">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Operating Expenses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 text-secondary">Category</th>
+                          <th className="text-left py-3 px-4 text-secondary">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Transport</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.transport)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Utilities</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.utilities)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Office Salaries</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.officeSalaries)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Repairs & Maintenance</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.repairs)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-3 px-4 text-foreground">Miscellaneous</td>
+                          <td className="py-3 px-4 text-foreground">{formatCurrency(reportData.otherExpenses.miscellaneous)}</td>
+                        </tr>
+                        <tr className="border-t-2 border-primary">
+                          <td className="py-3 px-4 text-foreground font-bold">Total Operating Expenses</td>
+                          <td className="py-3 px-4 text-destructive font-bold">{formatCurrency(reportData.otherExpenses.total)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Utilities</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.utilities)}</p>
-                  </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Salaries</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.salaries)}</p>
-                  </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Repairs</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.repairs)}</p>
-                  </div>
-                  <div className="bg-muted/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Misc</p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(reportData.expenses.miscellaneous)}</p>
-                  </div>
-                  <div className="bg-warning/20 rounded-lg p-3 text-center">
-                    <p className="text-secondary text-xs font-medium">Total</p>
-                    <p className="text-lg font-bold text-warning">{formatCurrency(reportData.expenses.total)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </section>
 
-            {/* Financial Overview */}
-            <Card className="card-metric border-2 border-success">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center text-xl">
-                  <Building className="h-6 w-6 mr-2" />
-                  Financial Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-foreground">Total Revenue</span>
-                    <span className="text-xl font-bold text-success">{formatCurrency(reportData.sales.totalRevenue)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-foreground">- Production Costs (COGS)</span>
-                    <span className="text-lg font-semibold text-destructive">-{formatCurrency(reportData.cogs.totalCOGS)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-foreground">- Employee Payments</span>
-                    <span className="text-lg font-semibold text-warning">-{formatCurrency(reportData.payments.total)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-foreground">- Operating Expenses</span>
-                    <span className="text-lg font-semibold text-warning">-{formatCurrency(reportData.expenses.total)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-4 bg-muted/20 rounded-lg px-4">
-                    <span className="text-lg font-bold text-foreground">= Net Profit</span>
-                    <span className={`text-2xl font-bold ${reportData.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {formatCurrency(reportData.netProfit)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </>
         )}
       </div>
