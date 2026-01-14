@@ -17,7 +17,9 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true
     },
     define: {
-      'process.env.REACT_APP_BACKEND_URL': JSON.stringify(env.REACT_APP_BACKEND_URL),
+      // Some legacy code expects this CRA-style env var to exist.
+      // Vite's define requires a concrete string value, so we default to an empty string.
+      'process.env.REACT_APP_BACKEND_URL': JSON.stringify(env.REACT_APP_BACKEND_URL ?? ""),
     },
     plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
     resolve: {
