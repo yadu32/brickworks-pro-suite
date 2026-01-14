@@ -50,6 +50,7 @@ export type Database = {
           brick_type_id: string
           created_at: string
           date: string
+          factory_id: string | null
           id: string
           number_of_punches: number
           remarks: string | null
@@ -60,6 +61,7 @@ export type Database = {
           brick_type_id: string
           created_at?: string
           date: string
+          factory_id?: string | null
           id?: string
           number_of_punches: number
           remarks?: string | null
@@ -70,6 +72,7 @@ export type Database = {
           brick_type_id?: string
           created_at?: string
           date?: string
+          factory_id?: string | null
           id?: string
           number_of_punches?: number
           remarks?: string | null
@@ -81,6 +84,13 @@ export type Database = {
             columns: ["brick_type_id"]
             isOneToOne: false
             referencedRelation: "brick_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bricks_production_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
             referencedColumns: ["id"]
           },
         ]
@@ -199,6 +209,10 @@ export type Database = {
           location: string | null
           name: string
           owner_id: string
+          plan_expiry_date: string | null
+          plan_type: string | null
+          subscription_status: string
+          trial_ends_at: string | null
         }
         Insert: {
           created_at?: string
@@ -206,6 +220,10 @@ export type Database = {
           location?: string | null
           name: string
           owner_id: string
+          plan_expiry_date?: string | null
+          plan_type?: string | null
+          subscription_status?: string
+          trial_ends_at?: string | null
         }
         Update: {
           created_at?: string
@@ -213,6 +231,10 @@ export type Database = {
           location?: string | null
           name?: string
           owner_id?: string
+          plan_expiry_date?: string | null
+          plan_type?: string | null
+          subscription_status?: string
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
@@ -645,13 +667,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sales_brick_type_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "brick_types"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "sales_factory_id_fkey"
             columns: ["factory_id"]
             isOneToOne: false
@@ -695,7 +710,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_factory_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
