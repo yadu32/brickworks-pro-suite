@@ -1,19 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi, AuthResponse } from '@/api';
-import apiClient from '@/api/client';
-
-interface User {
-  id: string;
-  email: string;
-  created_at: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -33,79 +28,77 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Function to update user activity
-  const updateUserActivity = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        await apiClient.post('/auth/update-activity');
-      }
-    } catch (error) {
-      // Silently fail - this is not critical
-      console.log('Activity update skipped');
-    }
-  };
-
   useEffect(() => {
-    // Check if user is logged in on mount
-    const checkAuth = async () => {
-      const token = localStorage.getItem('auth_token');
-      const storedUser = localStorage.getItem('user');
-      
-      if (token && storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-          // Update activity when app opens with valid session
-          updateUserActivity();
-        } catch (error) {
-          console.error('Error parsing stored user:', error);
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user');
-        }
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
       }
-      setLoading(false);
-    };
+    );
 
-    checkAuth();
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response: AuthResponse = await authApi.login({ email, password });
-      localStorage.setItem('auth_token', response.access_token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
-      // Activity is already updated by the login endpoint
-    } catch (error: any) {
-      console.error('Login error:', error);
-      const message = error.response?.data?.detail || error.message || 'Login failed';
-      throw new Error(message);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error(error.message);
     }
+
+    setUser(data.user);
+    setSession(data.session);
   };
 
   const register = async (email: string, password: string) => {
-    try {
-      const response: AuthResponse = await authApi.register({ email, password });
-      localStorage.setItem('auth_token', response.access_token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      const message = error.response?.data?.detail || error.message || 'Registration failed';
-      throw new Error(message);
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // If email confirmation is disabled, user will be logged in immediately
+    if (data.user && data.session) {
+      setUser(data.user);
+      setSession(data.session);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new Error(error.message);
+    }
     setUser(null);
+    setSession(null);
   };
 
   const value: AuthContextType = {
     user,
+    session,
     loading,
     login,
     register,

@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { factoryApi } from "@/api";
+import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./components/Onboarding";
@@ -28,8 +28,14 @@ const AppContent = () => {
     const checkUserFactory = async () => {
       if (user) {
         try {
-          const factories = await factoryApi.getAll();
-          setHasFactory(factories.length > 0);
+          const { data, error } = await supabase
+            .from('factories')
+            .select('id')
+            .eq('owner_id', user.id)
+            .limit(1);
+          
+          if (error) throw error;
+          setHasFactory(data && data.length > 0);
         } catch (error) {
           console.error('Error checking factory:', error);
           setHasFactory(false);
