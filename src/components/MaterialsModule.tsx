@@ -407,7 +407,7 @@ const MaterialsModule = () => {
                         <SelectTrigger>
                           <SelectValue placeholder="Select material" />
                         </SelectTrigger>
-                        <SelectContent className="bg-background border border-border z-50">
+                        <SelectContent className="bg-popover border border-border z-[200]" position="popper" sideOffset={4}>
                           {materials.map((material) => (
                             <SelectItem key={material.id} value={material.id}>
                               {material.material_name} ({material.unit})
@@ -531,7 +531,7 @@ const MaterialsModule = () => {
                         <SelectTrigger>
                           <SelectValue placeholder="Select material" />
                         </SelectTrigger>
-                        <SelectContent className="bg-background border border-border z-50">
+                        <SelectContent className="bg-popover border border-border z-[200]" position="popper" sideOffset={4}>
                           {materials.map((material) => (
                             <SelectItem key={material.id} value={material.id}>
                               {material.material_name} ({material.unit})
