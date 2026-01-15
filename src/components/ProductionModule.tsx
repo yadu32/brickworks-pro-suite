@@ -229,7 +229,7 @@ const ProductionModule = () => {
                     <SelectTrigger className="input-dark">
                       <SelectValue placeholder="Select brick type" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background border border-border z-50">
+                    <SelectContent className="bg-popover border border-border z-[200]" position="popper" sideOffset={4}>
                       {brickTypes.map((type) => (
                         <SelectItem key={type.id} value={type.id}>
                           {type.type_name} ({type.standard_bricks_per_punch} per punch)

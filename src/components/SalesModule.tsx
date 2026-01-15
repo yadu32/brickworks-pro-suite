@@ -695,7 +695,7 @@ const SalesModule = () => {
                       <SelectTrigger>
                         <SelectValue placeholder="Select product type" />
                       </SelectTrigger>
-                      <SelectContent className="bg-background border border-border z-50">
+                      <SelectContent className="bg-popover border border-border z-[200]" position="popper" sideOffset={4}>
                         {productTypes.map((type) => (
                           <SelectItem key={type.id} value={type.id}>
                             {type.name}
